@@ -1,0 +1,2664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intersect Community Hubs - Post-Mortem Report</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e8e8e8;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #0f3460 0%, #533483 100%);
+            border-radius: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        header p {
+            color: #b8b8b8;
+            font-size: 1.1em;
+        }
+
+        .data-complete {
+            background: linear-gradient(90deg, #2ecc71, #27ae60);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        /* Metric Badges */
+        .metric-badges {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .metric-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            padding: 10px 18px;
+            border-radius: 25px;
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.3s ease;
+        }
+
+        .metric-badge:hover {
+            transform: translateY(-2px);
+            background: rgba(255,255,255,0.15);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+
+        .metric-badge .icon {
+            font-size: 1.3em;
+        }
+
+        .metric-badge .metric-value {
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #00d4ff;
+        }
+
+        .metric-badge .metric-label {
+            color: #ccc;
+            font-size: 0.9em;
+        }
+
+        /* Sticky Navigation */
+        .sticky-nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 12px 20px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sticky-nav-inner {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: #a0a0a0;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid transparent;
+        }
+
+        .nav-link:hover {
+            color: #00d4ff;
+            background: rgba(0,212,255,0.15);
+            border-color: rgba(0,212,255,0.3);
+        }
+
+        .nav-link.active {
+            color: #00d4ff;
+            background: rgba(0,212,255,0.2);
+            border-color: rgba(0,212,255,0.4);
+        }
+
+        /* Back to Top Button */
+        .back-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #00d4ff 0%, #7b2cbf 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5em;
+            text-decoration: none;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+            transition: all 0.3s ease;
+            z-index: 99;
+        }
+
+        .back-to-top:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+        }
+
+        /* Section Dividers */
+        .section-divider {
+            text-align: center;
+            margin: 40px 0 30px;
+            position: relative;
+        }
+
+        .section-divider::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(0,212,255,0.3), transparent);
+        }
+
+        .section-divider span {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 0 25px;
+            position: relative;
+            color: #00d4ff;
+            font-size: 1.1em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Collapsible Sections */
+        .collapsible-header {
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .collapsible-header::after {
+            content: '▼';
+            font-size: 0.8em;
+            transition: transform 0.3s ease;
+        }
+
+        .collapsible-header.collapsed::after {
+            transform: rotate(-90deg);
+        }
+
+        .collapsible-content {
+            max-height: 2000px;
+            overflow: hidden;
+            transition: max-height 0.5s ease;
+        }
+
+        .collapsible-content.collapsed {
+            max-height: 0;
+        }
+
+        /* Compact Hub Summary */
+        .hub-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            padding: 20px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            margin-bottom: 20px;
+            align-items: flex-start;
+        }
+
+        .hub-summary-left {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .hub-summary-right {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .hub-meta {
+            font-size: 0.9em;
+            color: #a0a0a0;
+        }
+
+        .hub-meta span {
+            color: #fff;
+        }
+
+        .hub-meta p {
+            margin: 4px 0;
+        }
+
+        /* Quick Event Links */
+        .quick-events {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .quick-event-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, rgba(0,212,255,0.12), rgba(123,44,191,0.12));
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 0.82em;
+            color: #00d4ff;
+            text-decoration: none;
+            border: 1px solid rgba(0,212,255,0.2);
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .quick-event-link:hover {
+            background: linear-gradient(135deg, rgba(0,212,255,0.2), rgba(123,44,191,0.2));
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,212,255,0.15);
+            border-color: rgba(0,212,255,0.35);
+        }
+
+        /* Event Cards with X Links */
+        .event-with-links {
+            background: rgba(0,0,0,0.15);
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 15px;
+            border-left: 3px solid #7b2cbf;
+            transition: background 0.2s ease, transform 0.2s ease;
+        }
+
+        .event-with-links:hover {
+            background: rgba(0,0,0,0.25);
+            transform: translateX(3px);
+        }
+
+        .event-with-links h4 {
+            color: #00d4ff;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .event-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .x-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(29,155,240,0.1);
+            color: #1d9bf0;
+            padding: 5px 12px;
+            border-radius: 14px;
+            font-size: 0.78em;
+            text-decoration: none;
+            border: 1px solid rgba(29,155,240,0.2);
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .x-link:hover {
+            background: rgba(29,155,240,0.2);
+            border-color: rgba(29,155,240,0.4);
+            transform: translateY(-1px);
+        }
+
+        .luma-link {
+            background: rgba(255,107,107,0.15);
+            color: #ff6b6b;
+            border-color: rgba(255,107,107,0.3);
+        }
+
+        .luma-link:hover {
+            background: rgba(255,107,107,0.25);
+        }
+
+        /* Translation Badge */
+        .translation-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(46,204,113,0.15);
+            color: #2ecc71;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            border: 1px solid rgba(46,204,113,0.3);
+        }
+
+        /* Section Headers within Hub */
+        .hub-section-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 25px 0 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .hub-section-header h3 {
+            color: #00d4ff;
+            font-size: 1.2em;
+            margin: 0;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .summary-card {
+            background: linear-gradient(145deg, #1e3a5f 0%, #2d1b4e 100%);
+            padding: 24px 20px;
+            border-radius: 14px;
+            text-align: center;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.2), 0 0 0 1px rgba(255,255,255,0.05);
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        .summary-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.08);
+        }
+
+        .summary-card .number {
+            font-size: 3em;
+            font-weight: bold;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .summary-card .label {
+            color: #a0a0a0;
+            font-size: 0.95em;
+            margin-top: 5px;
+        }
+
+        .hub-section {
+            background: linear-gradient(145deg, #1e2a4a 0%, #2a1f4e 100%);
+            border-radius: 16px;
+            margin-bottom: 30px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.05);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .hub-section:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 48px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.08);
+        }
+
+        .hub-header {
+            padding: 25px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .hub-header h2 {
+            font-size: 1.8em;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .hub-header .region-badge {
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.5em;
+            font-weight: normal;
+        }
+
+        .hub-header .status {
+            background: #2ecc71;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+
+        .hub-content {
+            padding: 0 30px 30px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+
+        .info-card {
+            background: rgba(255,255,255,0.04);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.08);
+            backdrop-filter: blur(10px);
+            transition: border-color 0.2s ease, background 0.2s ease;
+        }
+
+        .info-card:hover {
+            border-color: rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.06);
+        }
+
+        .info-card h3 {
+            color: #00d4ff;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 10px;
+        }
+
+        .info-card p {
+            margin-bottom: 8px;
+        }
+
+        .info-card .label {
+            color: #888;
+            font-size: 0.85em;
+        }
+
+        .info-card .value {
+            color: #fff;
+            font-weight: 500;
+        }
+
+        .milestone-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .milestone-table th,
+        .milestone-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .milestone-table th {
+            background: rgba(0,0,0,0.2);
+            color: #00d4ff;
+            font-weight: 600;
+        }
+
+        .milestone-table tr:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+        }
+
+        .status-completed {
+            background: rgba(46, 204, 113, 0.15);
+            color: #2ecc71;
+            border: 1px solid rgba(46, 204, 113, 0.3);
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .kpi-item {
+            background: rgba(0,212,255,0.08);
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid rgba(0,212,255,0.15);
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+
+        .kpi-item:hover {
+            background: rgba(0,212,255,0.12);
+            border-color: rgba(0,212,255,0.25);
+        }
+
+        .kpi-item .kpi-value {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: #00d4ff;
+            line-height: 1.2;
+        }
+
+        .kpi-item .kpi-label {
+            font-size: 0.8em;
+            color: #a0a0a0;
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .events-list {
+            list-style: none;
+        }
+
+        .events-list li {
+            padding: 10px 15px;
+            background: rgba(255,255,255,0.03);
+            margin-bottom: 8px;
+            border-radius: 8px;
+            border-left: 3px solid #7b2cbf;
+        }
+
+        .channels-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .channel-badge {
+            background: rgba(123, 44, 191, 0.2);
+            padding: 6px 14px;
+            border-radius: 18px;
+            font-size: 0.82em;
+            border: 1px solid rgba(123, 44, 191, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .channel-badge:hover {
+            background: rgba(123, 44, 191, 0.3);
+            border-color: rgba(123, 44, 191, 0.5);
+        }
+
+        .regional-events {
+            margin-top: 20px;
+        }
+
+        .regional-events h4 {
+            color: #7b2cbf;
+            margin: 15px 0 10px;
+            font-size: 1em;
+        }
+
+        .event-card {
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .event-card .event-name {
+            font-weight: 600;
+        }
+
+        .event-card .event-date {
+            color: #888;
+            font-size: 0.9em;
+        }
+
+        .event-card .attendees {
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-weight: bold;
+        }
+
+        .leadership-change {
+            background: rgba(241, 196, 15, 0.2);
+            border: 1px solid rgba(241, 196, 15, 0.5);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .leadership-change h4 {
+            color: #f1c40f;
+            margin-bottom: 10px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .schedule-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .schedule-item {
+            background: rgba(0,0,0,0.2);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .schedule-item .day {
+            color: #00d4ff;
+            font-weight: bold;
+        }
+
+        .schedule-item .event-type {
+            font-size: 0.85em;
+            color: #a0a0a0;
+        }
+
+        /* Table scroll wrapper */
+        .table-scroll {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 0 -10px;
+            padding: 0 10px;
+        }
+
+        .table-scroll table {
+            min-width: 600px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            header {
+                padding: 20px 15px;
+                border-radius: 12px;
+            }
+
+            header h1 {
+                font-size: 1.5em;
+            }
+
+            header p {
+                font-size: 0.95em;
+            }
+
+            header img {
+                border-radius: 8px !important;
+                margin-bottom: 15px !important;
+            }
+
+            /* Metric badges - horizontal scroll */
+            .metric-badges {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                justify-content: flex-start;
+                padding-bottom: 10px;
+                margin: 15px -15px 0;
+                padding-left: 15px;
+                padding-right: 15px;
+            }
+
+            .metric-badge {
+                flex-shrink: 0;
+                padding: 8px 12px;
+            }
+
+            /* Sticky nav - horizontal scroll */
+            .sticky-nav {
+                padding: 10px 15px;
+                border-radius: 10px;
+                margin-bottom: 15px;
+            }
+
+            .sticky-nav-inner {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                justify-content: flex-start;
+                padding-bottom: 5px;
+                gap: 8px;
+            }
+
+            .nav-link {
+                flex-shrink: 0;
+                padding: 6px 12px;
+                font-size: 0.85em;
+            }
+
+            /* Summary cards */
+            .summary-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+                margin-bottom: 25px;
+            }
+
+            .summary-card {
+                padding: 15px 10px;
+                border-radius: 10px;
+            }
+
+            .summary-card .number {
+                font-size: 1.8em;
+            }
+
+            .summary-card .label {
+                font-size: 0.8em;
+            }
+
+            /* Hub sections */
+            .hub-section {
+                border-radius: 12px;
+                margin-bottom: 20px;
+            }
+
+            .hub-header {
+                flex-direction: column;
+                text-align: center;
+                padding: 15px;
+                gap: 10px;
+            }
+
+            .hub-header h2 {
+                font-size: 1.3em;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .hub-header .region-badge {
+                font-size: 0.6em;
+            }
+
+            .hub-header > div {
+                text-align: center !important;
+            }
+
+            .hub-content {
+                padding: 0 15px 20px;
+            }
+
+            /* Hub summary layout */
+            .hub-summary {
+                flex-direction: column;
+                padding: 15px;
+                gap: 15px;
+            }
+
+            .hub-summary-left,
+            .hub-summary-right {
+                min-width: 100%;
+            }
+
+            /* Info cards */
+            .info-card {
+                padding: 15px;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            /* KPI grids */
+            .kpi-grid {
+                grid-template-columns: repeat(3, 1fr) !important;
+                gap: 8px;
+            }
+
+            .kpi-item {
+                padding: 10px 5px;
+            }
+
+            .kpi-item .kpi-value {
+                font-size: 1.2em !important;
+            }
+
+            .kpi-item .kpi-label {
+                font-size: 0.7em;
+            }
+
+            /* Tables - horizontal scroll */
+            .milestone-table {
+                display: block;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                white-space: nowrap;
+            }
+
+            .milestone-table th,
+            .milestone-table td {
+                padding: 10px 12px;
+                font-size: 0.85em;
+            }
+
+            /* Quick events */
+            .quick-events {
+                gap: 6px;
+                margin-top: 10px;
+            }
+
+            .quick-event-link {
+                padding: 6px 10px;
+                font-size: 0.8em;
+            }
+
+            /* Event links and X links */
+            .event-links {
+                gap: 6px;
+            }
+
+            .x-link {
+                padding: 3px 8px;
+                font-size: 0.75em;
+            }
+
+            /* Section headers */
+            .hub-section-header {
+                margin: 20px 0 10px;
+            }
+
+            .hub-section-header h3 {
+                font-size: 1em;
+            }
+
+            /* Channels and badges */
+            .channels-list {
+                gap: 6px;
+            }
+
+            .channel-badge,
+            .translation-badge {
+                padding: 4px 10px;
+                font-size: 0.8em;
+            }
+
+            /* Event cards */
+            .event-with-links {
+                padding: 12px;
+            }
+
+            .event-with-links h4 {
+                font-size: 1em;
+            }
+
+            /* Back to top */
+            .back-to-top {
+                bottom: 20px;
+                right: 20px;
+                width: 40px;
+                height: 40px;
+                font-size: 1.2em;
+            }
+
+            /* Section dividers */
+            .section-divider {
+                margin: 25px 0 20px;
+            }
+
+            .section-divider span {
+                font-size: 0.9em;
+                padding: 0 15px;
+            }
+
+            /* Mission card links */
+            .info-card > div[style*="display: flex"] {
+                flex-direction: column !important;
+                align-items: stretch !important;
+            }
+
+            .info-card > div[style*="display: flex"] > a {
+                text-align: center;
+            }
+
+            /* X metrics bars */
+            .info-card[style*="border-left: 4px solid #1da1f2"] > div {
+                flex-direction: column !important;
+                gap: 8px !important;
+                text-align: center;
+            }
+
+            /* Footer */
+            footer {
+                padding: 25px 15px;
+                font-size: 0.85em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            header h1 {
+                font-size: 1.3em;
+            }
+
+            .summary-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .summary-card .number {
+                font-size: 1.5em;
+            }
+
+            .kpi-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+            }
+
+            .hub-header h2 {
+                font-size: 1.1em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header id="top">
+            <img src="https://pbs.twimg.com/profile_banners/1829602530168295424/1754508462/1500x500" alt="Intersect MCC Banner" style="width: 100%; max-width: 800px; border-radius: 12px; margin-bottom: 20px;">
+            <h1>Intersect Community Hubs</h1>
+            <p>Post-Mortem Report (May 2024 - June 2025)</p>
+            <p style="font-size: 0.9em; color: #888; margin-top: 5px;">By <strong>IntersectMCC</strong> (Membership & Community Committee)</p>
+            <p style="font-size: 0.8em; color: #666; margin-top: 8px;">Version 1.2 · March 6, 2026</p>
+        </header>
+
+        <!-- Disclaimer Banner -->
+        <div style="background: linear-gradient(135deg, rgba(241,196,15,0.2) 0%, rgba(230,126,34,0.2) 100%); border: 1px solid rgba(241,196,15,0.5); border-radius: 12px; padding: 15px 20px; margin-bottom: 20px;">
+            <p style="margin: 0; color: #f1c40f; font-size: 0.95em;">
+                <strong>⚠️ Disclaimer:</strong> Information in this document was gathered from public records (Development Updates, X posts, Luma events) and select internal documents (Milestone Acceptance Forms).
+            </p>
+        </div>
+
+        <!-- Sticky Navigation -->
+        <nav class="sticky-nav">
+            <div class="sticky-nav-inner">
+                <a href="#executive-summary" class="nav-link">📋 Summary</a>
+                <a href="#awen-hub" class="nav-link">🇺🇸 North America</a>
+                <a href="#latam-hub" class="nav-link">🌎 LATAM</a>
+                <a href="#japan-hub" class="nav-link">🇯🇵 Japan</a>
+                <a href="#srilanka-hub" class="nav-link">🇱🇰 Sri Lanka</a>
+                <a href="#wada-hub" class="nav-link">🌍 Africa</a>
+                <a href="#europe-hub" class="nav-link">🇪🇺 Europe</a>
+            </div>
+        </nav>
+
+        <!-- Community Hubs Mission -->
+        <div class="info-card" style="margin-bottom: 25px; background: linear-gradient(135deg, rgba(0,212,255,0.1) 0%, rgba(123,44,191,0.1) 100%); border: 1px solid rgba(0,212,255,0.3);">
+            <h3 style="margin-bottom: 15px; color: #00d4ff;">🌐 Community Hubs Mission</h3>
+            <p style="font-size: 1.05em; margin-bottom: 15px;"><strong>"Community hubs exist to accelerate Cardano adoption through local engagement, education, and ecosystem development."</strong></p>
+            <p style="margin-bottom: 15px; color: #b8b8b8;">Hubs serve as a bridge between local and global Cardano communities, enabling decentralized governance participation, impactful project development, and strengthening the global Cardano network.</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px;">
+                <a href="https://committees.docs.intersectmbo.org/groups-overview/working-groups/mcc-community-hubs-working-group" target="_blank" style="background: rgba(0,212,255,0.2); color: #00d4ff; padding: 8px 15px; border-radius: 20px; text-decoration: none; font-size: 0.9em;">📋 Working Group & KPIs</a>
+                <a href="https://docs.intersectmbo.org/intersect-overview/intersect-committees/membership-and-community-committee-mcc/community-hubs" target="_blank" style="background: rgba(46,204,113,0.2); color: #2ecc71; padding: 8px 15px; border-radius: 20px; text-decoration: none; font-size: 0.9em;">🌍 Community Hubs Docs</a>
+                <a href="https://docs.intersectmbo.org/intersect-overview/intersect-committees/membership-and-community-committee-mcc" target="_blank" style="background: rgba(155,89,182,0.2); color: #9b59b6; padding: 8px 15px; border-radius: 20px; text-decoration: none; font-size: 0.9em;">🏛️ MCC Overview</a>
+            </div>
+        </div>
+
+        <!-- Executive Summary with Navigation -->
+        <div class="hub-section" id="executive-summary" style="margin-bottom: 30px;">
+            <div class="hub-header" style="background: linear-gradient(90deg, #2c3e50 0%, #34495e 100%);">
+                <h2>📋 Executive Summary</h2>
+            </div>
+            <div class="hub-content">
+                <div class="info-card">
+                    <h3>Hub Overview & Timeline</h3>
+                    <p style="margin-bottom: 15px; color: #888; font-size: 0.9em;">Japan and LATAM were founding hubs operational before May 2024. Hub applications opened in <a href="https://www.intersectmbo.org/news/intersect-development-update-13-may-10th" target="_blank" style="color: #00d4ff;">Update #13</a> for expansion.</p>
+                    <div class="table-scroll">
+                        <table class="milestone-table">
+                            <tr><th>#</th><th>Hub</th><th>Region</th><th>Launched</th><th>Contract Period</th><th>Milestones</th></tr>
+                            <tr><td>1</td><td><a href="#japan-hub" style="color: #00d4ff;">Japan Hub</a></td><td>Asia</td><td><a href="https://www.intersectmbo.org/news/intersect-development-update-13-may-10th" style="color: #888;">#13</a></td><td>May 2024 - Jun 2025</td><td>10 (7+3)</td></tr>
+                            <tr><td>2</td><td><a href="#latam-hub" style="color: #00d4ff;">LATAM Hub</a></td><td>Latin America</td><td><a href="https://www.intersectmbo.org/news/intersect-development-update-13-may-10th" style="color: #888;">#13</a></td><td>May 2024 - Jun 2025</td><td>9 (7+2)</td></tr>
+                            <tr><td>3</td><td><a href="#srilanka-hub" style="color: #00d4ff;">Sri Lanka Hub</a> <span style="color: #888; font-size: 0.8em;">(CoinCeylon)</span></td><td>South Asia</td><td><a href="https://www.intersectmbo.org/news/intersect-development-update-15-may-24th" style="color: #888;">#15</a></td><td>May 24, 2024 - Jun 2025</td><td>10 (7+3)</td></tr>
+                            <tr><td>4</td><td><a href="#wada-hub" style="color: #00d4ff;">WADA Hub</a></td><td>Africa</td><td><a href="https://www.intersectmbo.org/news/intersect-development-update-16-may-31st" style="color: #888;">#16</a></td><td>May 31, 2024 - Jun 2025</td><td>8 (5+3)</td></tr>
+                            <tr><td>5</td><td><a href="#europe-hub" style="color: #00d4ff;">Europe Hub</a> <span style="color: #888; font-size: 0.8em;">(Clay Nation)</span></td><td>Europe</td><td><a href="https://www.intersectmbo.org/news/intersect-development-update-31-september-13th" style="color: #888;">#31</a></td><td>Sep 6, 2024 - Jun 2025</td><td>3 (3+0)</td></tr>
+                            <tr><td>6</td><td><a href="#awen-hub" style="color: #00d4ff;">North America Hub</a> <span style="color: #888; font-size: 0.8em;">(AWEN)</span></td><td>North America</td><td><a href="https://www.intersectmbo.org/news/intersect-development-update-32-september-20th" style="color: #888;">#32</a></td><td>Sep 17, 2024 - Jun 2025</td><td>9 (6+3)</td></tr>
+                        </table>
+                    </div>
+                    <p style="margin-top: 15px; color: #888; font-size: 0.9em;"><strong>Contract Phases:</strong> Original contracts funded by CDH. Interim 3-month bridge funding (Apr-Jun 2025) until Treasury withdrawal. Source: <a href="https://docs.intersectmbo.org/intersect-knowledge-base/archive/cardano-budget-archive/intersect-operational-services/2025-delivery-assurance-contract-updates/membership-and-community-committee-contracts" target="_blank" style="color: #00d4ff;">Intersect MBO Documentation</a></p>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Sources/References Summary -->
+        <div style="background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.25); border-radius: 12px; padding: 15px 20px; margin-bottom: 25px;">
+            <h4 style="color: #00d4ff; margin-bottom: 12px;">📚 <a href="#references" style="color: #00d4ff; text-decoration: none;">Sources & References</a></h4>
+            <div style="display: flex; flex-wrap: wrap; gap: 15px; font-size: 0.9em; color: #a0a0a0;">
+                <span><strong style="color: #00d4ff;">48</strong> MAF Documents</span>
+                <span><strong style="color: #00d4ff;">49</strong> Milestones</span>
+                <span><strong style="color: #00d4ff;">185+</strong> X/Twitter Links</span>
+                <span><strong style="color: #00d4ff;">37</strong> Dev Updates</span>
+                <span><strong style="color: #00d4ff;">30+</strong> Luma Events</span>
+                <span><strong style="color: #00d4ff;">15+</strong> Video Recordings</span>
+            </div>
+            <p style="margin-top: 10px; font-size: 0.85em; color: #888;">
+                <a href="#references" style="color: #00d4ff;">View full references ↓</a>
+            </p>
+        </div>
+
+        <h3 style="text-align: center; color: #00d4ff; margin-bottom: 20px;">Key Performance Indicators (KPIs)</h3>
+        <div class="summary-grid">
+            <div class="summary-card">
+                <div style="font-size: 1.5em; margin-bottom: 8px;">🌐</div>
+                <div class="number">6</div>
+                <div class="label">Regional Hubs</div>
+            </div>
+            <div class="summary-card">
+                <div style="font-size: 1.5em; margin-bottom: 8px;">✅</div>
+                <div class="number">49</div>
+                <div class="label">Milestones Completed</div>
+            </div>
+            <div class="summary-card">
+                <div style="font-size: 1.5em; margin-bottom: 8px;">📊</div>
+                <div class="number">70%</div>
+                <div class="label">Individual Members in Hub Regions</div>
+            </div>
+            <div class="summary-card">
+                <div style="font-size: 1.5em; margin-bottom: 8px;">👥</div>
+                <div class="number">1,799</div>
+                <div class="label">Individual Members (Mar 2025)</div>
+            </div>
+            <div class="summary-card">
+                <div style="font-size: 1.5em; margin-bottom: 8px;">📄</div>
+                <div class="number">48</div>
+                <div class="label">MAF Documents</div>
+            </div>
+            <div class="summary-card">
+                <div style="font-size: 1.5em; margin-bottom: 8px;">🎪</div>
+                <div class="number">293K+</div>
+                <div class="label">Event Attendees</div>
+            </div>
+            <div class="summary-card">
+                <div style="font-size: 1.5em; margin-bottom: 8px;">🏫</div>
+                <div class="number">700+</div>
+                <div class="label">University Students Trained</div>
+            </div>
+            <div class="summary-card">
+                <div style="font-size: 1.5em; margin-bottom: 8px;">🏠</div>
+                <div class="number">8</div>
+                <div class="label">Sub-Hubs Established</div>
+            </div>
+            <div class="summary-card">
+                <div style="font-size: 1.5em; margin-bottom: 8px;">🗣️</div>
+                <div class="number">8</div>
+                <div class="label">Languages Supported</div>
+            </div>
+        </div>
+
+        <!-- Hub Statistics Table (March 2025) -->
+        <div class="info-card" style="margin: 30px 0;">
+            <h3 style="margin-bottom: 15px; color: #00d4ff;">📊 Hub Statistics (as of March 12, 2025)</h3>
+            <p style="font-size: 0.85em; color: #888; margin-bottom: 15px;">Source: <a href="https://docs.google.com/presentation/d/1LckpJMmmd4ctA9NUfA-yYwlVFI7HWiuihy1d94C9n5s/edit" target="_blank" style="color: #00d4ff;">Existing Community Hubs Report</a></p>
+            <div class="table-scroll">
+                <table class="milestone-table" style="font-size: 0.9em;">
+                    <tr>
+                        <th>Hub</th>
+                        <th>Events</th>
+                        <th>Attendees</th>
+                        <th>Individual Members</th>
+                        <th>Associates</th>
+                        <th>Enterprise</th>
+                    </tr>
+                    <tr>
+                        <td>🌎 LATAM</td>
+                        <td style="text-align: center;">18</td>
+                        <td style="text-align: right;">15,093</td>
+                        <td style="text-align: center;">127</td>
+                        <td style="text-align: center;">427</td>
+                        <td style="text-align: center;">2</td>
+                    </tr>
+                    <tr>
+                        <td>🇯🇵 Japan</td>
+                        <td style="text-align: center;">61</td>
+                        <td style="text-align: right;">6,195</td>
+                        <td style="text-align: center;">533</td>
+                        <td style="text-align: center;">63</td>
+                        <td style="text-align: center;">3</td>
+                    </tr>
+                    <tr>
+                        <td>🇱🇰 Sri Lanka</td>
+                        <td style="text-align: center;">21</td>
+                        <td style="text-align: right;">165,122</td>
+                        <td style="text-align: center;">263</td>
+                        <td style="text-align: center;">243</td>
+                        <td style="text-align: center;">1</td>
+                    </tr>
+                    <tr>
+                        <td>🌍 Africa (WADA)</td>
+                        <td style="text-align: center;">46</td>
+                        <td style="text-align: right;">1,391</td>
+                        <td style="text-align: center;">87</td>
+                        <td style="text-align: center;">127</td>
+                        <td style="text-align: center;">1</td>
+                    </tr>
+                    <tr>
+                        <td>🇪🇺 Europe</td>
+                        <td style="text-align: center;">9</td>
+                        <td style="text-align: right;">100,853</td>
+                        <td style="text-align: center;">19</td>
+                        <td style="text-align: center;">26</td>
+                        <td style="text-align: center;">3</td>
+                    </tr>
+                    <tr>
+                        <td>🇺🇸 North America</td>
+                        <td style="text-align: center;">12</td>
+                        <td style="text-align: right;">4,600</td>
+                        <td style="text-align: center;">239</td>
+                        <td style="text-align: center;">225</td>
+                        <td style="text-align: center;">6</td>
+                    </tr>
+                    <tr style="background: rgba(0,212,255,0.1); font-weight: bold;">
+                        <td>Total</td>
+                        <td style="text-align: center;">167</td>
+                        <td style="text-align: right;">293,254</td>
+                        <td style="text-align: center;">1,268</td>
+                        <td style="text-align: center;">1,111</td>
+                        <td style="text-align: center;">16</td>
+                    </tr>
+                </table>
+            </div>
+            <div style="margin-top: 15px; display: flex; flex-wrap: wrap; gap: 20px; font-size: 0.85em; color: #a0a0a0;">
+                <span><strong style="color: #2ecc71;">70%</strong> Individual Members in hub regions</span>
+                <span><strong style="color: #3498db;">30%</strong> Individual Members attributed to Japan</span>
+                <span><strong style="color: #9b59b6;">39%</strong> Associates in hub regions</span>
+                <span><strong style="color: #e67e22;">28%</strong> Enterprise Members in hub regions</span>
+            </div>
+            <p style="font-size: 0.8em; color: #666; margin-top: 10px;"><em>*Attendees include industry events where hubs were represented. Figures are those attributed to a community hub region.</em></p>
+        </div>
+
+        <!-- Section Divider: Regional Hubs -->
+        <div class="section-divider">
+            <span>Regional Hub Details</span>
+        </div>
+
+        <!-- North American Hub -->
+        <div class="hub-section" id="awen-hub">
+            <div class="hub-header" style="background: linear-gradient(90deg, #1a5276 0%, #2e86ab 100%);">
+                <h2>🇺🇸 North American Hub <span class="region-badge">North America</span></h2>
+                <div style="text-align: right;">
+                    <div style="font-size: 0.8em; color: #fff; margin-top: 5px;">Announced: <a href="https://www.intersectmbo.org/news/intersect-development-update-32-september-20th" style="color: #fff;">Update #32</a> | Contract: Sep 17, 2024 - Jun 30, 2025</div>
+                </div>
+            </div>
+            <div class="hub-content">
+                <!-- Compact Hub Summary -->
+                <div class="hub-summary">
+                    <div class="hub-summary-left">
+                        <div class="hub-meta">
+                            <p><strong>Manager:</strong> <span>Ian McCullough</span> · <strong>Approver:</strong> <span>Hannah Williams</span></p>
+                            <p><strong>Email:</strong> <span>awen@intersectmbo.org</span></p>
+                        </div>
+                        <div class="channels-list" style="margin-top: 10px;">
+                            <a href="https://x.com/IntersectNA" target="_blank" class="channel-badge" style="text-decoration: none; color: inherit;">@IntersectNA</a>
+                            <a href="https://discord.gg/Gr7FhzaVrk" target="_blank" class="channel-badge" style="text-decoration: none; color: inherit;">Discord</a>
+                            <a href="https://t.me/+VzL2jyYQHUQ0ODMx" target="_blank" class="channel-badge" style="text-decoration: none; color: inherit;">Telegram</a>
+                            <a href="https://lu.ma/intersectNA" target="_blank" class="channel-badge" style="text-decoration: none; color: inherit;">Luma</a>
+                        </div>
+                    </div>
+                    <div class="hub-summary-right">
+                        <div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr);">
+                            <div class="kpi-item" style="padding: 10px;">
+                                <div class="kpi-value" style="font-size: 1.4em;">3,000+</div>
+                                <div class="kpi-label">GM2025 Viewers</div>
+                            </div>
+                            <div class="kpi-item" style="padding: 10px;">
+                                <div class="kpi-value" style="font-size: 1.4em;">326</div>
+                                <div class="kpi-label">Max X Space</div>
+                            </div>
+                            <div class="kpi-item" style="padding: 10px;">
+                                <div class="kpi-value" style="font-size: 1.4em;">18</div>
+                                <div class="kpi-label">Total Events</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- X Metrics -->
+                <div class="info-card" style="background: rgba(29,161,242,0.1); border-left: 4px solid #1da1f2; margin-bottom: 20px; padding: 12px 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                        <a href="https://x.com/IntersectNA" target="_blank" style="font-weight: bold; color: #1da1f2; text-decoration: none; display: flex; align-items: center; gap: 6px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> @IntersectNA</a>
+                        <span><strong>384</strong> followers · <strong>~70</strong> posts · <strong>312</strong> avg views</span>
+                        <span style="font-size: 0.85em; color: #888;">Inactive as of July 2025</span>
+                    </div>
+                </div>
+
+                <!-- Quick Event Links -->
+                <div class="quick-events">
+                    <a href="https://lu.ma/cc96lvq8" target="_blank" class="quick-event-link">🎤 GM2025 DRep Debate</a>
+                    <a href="https://luma.com/67wrmo10" target="_blank" class="quick-event-link">🏛️ AMM Austin</a>
+                    <a href="https://lu.ma/909wo06d" target="_blank" class="quick-event-link">🍁 Consensus Toronto (501)</a>
+                    <a href="https://x.com/i/spaces/1kvJpbMDjkkKE" target="_blank" class="quick-event-link">📻 Town Hall #4 (326)</a>
+                    <a href="https://x.com/i/spaces/1BRJjmDoNYwGw" target="_blank" class="quick-event-link">💰 DeFi Town Hall</a>
+                </div>
+
+                <!-- Events & Activations -->
+                <div class="hub-section-header">
+                    <h3>🎪 Events & Activations</h3>
+                </div>
+
+                <!-- GM2025 DRep Debate -->
+                <div class="event-with-links">
+                    <h4>GM2025 Fort Myers - First DRep Debate of 2025</h4>
+                    <p style="margin-bottom: 10px;">Jan 25, 2025 · Luminary Hotel, Fort Myers FL · <strong>44 in-person + 22 virtual + 3,000+ livestream</strong></p>
+                    <p style="font-size: 0.9em; color: #a0a0a0;">Moderators: Dr. Adam Rusch, Jenny Brito · Panelists: Crypto Crow, Gerson Gomes, Lloyd Duhon, Ken Ladd (Vice Chairman, Cardano CDC), Jose Martinez</p>
+                    <p style="font-size: 0.9em; color: #a0a0a0; margin-top: 5px;">Speakers: Samuel Leathers, Tamara Haasen, Lloyd Duhon, Jack Briggs, Logan Panchot (ClarityDAO), Kendrick L., Wes Parkinson, Rand McHenry</p>
+                    <div class="event-links">
+                        <a href="https://lu.ma/cc96lvq8" target="_blank" class="luma-link">📅 Luma</a>
+                        <a href="https://x.com/IntersectNA/status/1869086164881166548" target="_blank" class="x-link">𝕏 Announcement</a>
+                        <a href="https://x.com/IntersectNA/status/1882056227049329015" target="_blank" class="x-link">𝕏 Programming</a>
+                        <a href="https://x.com/IntersectNA/status/1879549555361845745" target="_blank" class="x-link">𝕏 Fishing Charter</a>
+                        <a href="https://www.intersectmbo.org/news/intersect-development-update-47-january-31st" target="_blank" class="x-link" style="background: rgba(0,212,255,0.15); color: #00d4ff; border-color: rgba(0,212,255,0.3);">📰 Update #47</a>
+                    </div>
+                </div>
+
+                <!-- AMM Austin -->
+                <div class="event-with-links">
+                    <h4>Annual Members Meeting (AMM) - Austin, TX</h4>
+                    <p style="margin-bottom: 10px;">Oct 19, 2024 · <strong>~30 attendees</strong></p>
+                    <p style="font-size: 0.9em; color: #a0a0a0;">Keynote: Jack Briggs · Closing Keynote: Joshua Stone (Book.io/Stuff.io) - Digital Media, Ownership & Value</p>
+                    <p style="font-size: 0.9em; color: #a0a0a0; margin-top: 5px;">Speakers: Nicodemus Rodriguez (ICC/DAO), Terence 'Tex' McCutcheon (Open Source), Adam Rusch (Board)</p>
+                    <div class="event-links">
+                        <a href="https://luma.com/67wrmo10" target="_blank" class="luma-link">📅 Luma</a>
+                        <a href="https://x.com/IntersectNA/status/1843733721918386469" target="_blank" class="x-link">𝕏 Keynote Post</a>
+                        <a href="https://x.com/IntersectNA/status/1844079488877093156" target="_blank" class="x-link">𝕏 Speakers</a>
+                        <a href="https://x.com/IntersectNA/status/1841071467733119182" target="_blank" class="x-link">𝕏 Member Spotlight</a>
+                        <a href="https://www.intersectmbo.org/news/intersect-development-update-37-october-25" target="_blank" class="x-link" style="background: rgba(0,212,255,0.15); color: #00d4ff; border-color: rgba(0,212,255,0.3);">📰 Update #37</a>
+                    </div>
+                </div>
+
+                <!-- Consensus Toronto -->
+                <div class="event-with-links">
+                    <h4>Cardano X Consensus 2025 - Toronto</h4>
+                    <p style="margin-bottom: 10px;">May 16, 2025 · 5:00 PM - 9:00 PM ET · Official Cardano Side Event · <strong>501 registered</strong></p>
+                    <p style="font-size: 0.9em; color: #a0a0a0;">Partners: Draper University (Cardano Founder Residency), Sundial Protocol (L2), Rare Network, Clay Nation, Awen</p>
+                    <p style="font-size: 0.9em; color: #a0a0a0; margin-top: 5px;">Exclusive gathering with Cardano's top leaders, developers, and innovators</p>
+                    <div class="event-links">
+                        <a href="https://lu.ma/909wo06d" target="_blank" class="luma-link">📅 Luma RSVP</a>
+                    </div>
+                </div>
+
+                <!-- Town Halls -->
+                <div class="hub-section-header">
+                    <h3>📻 Town Halls (X Spaces)</h3>
+                </div>
+
+                <div class="info-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>Town Hall #1</h4>
+                        <p>Oct 2, 2024 · First monthly town hall</p>
+                        <div class="event-links">
+                            <a href="https://x.com/i/spaces/1zqKVYzXLzdxB" target="_blank" class="x-link">𝕏 Space</a>
+                            <a href="https://x.com/IntersectNA/status/1841523626199355837" target="_blank" class="x-link">𝕏 Announcement</a>
+                        </div>
+                    </div>
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>Town Hall #2</h4>
+                        <p>Nov 6, 2024 · <strong>33 attendees</strong></p>
+                        <div class="event-links">
+                            <a href="https://x.com/i/spaces/1djxXrLzjwdGZ" target="_blank" class="x-link">𝕏 Space</a>
+                            <a href="https://x.com/IntersectNA/status/1853577816048017742" target="_blank" class="x-link">𝕏 Announcement</a>
+                        </div>
+                    </div>
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>Town Hall #3 - Rare Network</h4>
+                        <p>Dec 4, 2024 · Cardano Events Council discussion</p>
+                        <div class="event-links">
+                            <a href="https://x.com/i/spaces/1lPKqOdDrdLJb" target="_blank" class="x-link">𝕏 Space</a>
+                            <a href="https://x.com/IntersectNA/status/1865681294610346449" target="_blank" class="x-link">𝕏 Announcement</a>
+                        </div>
+                    </div>
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>Town Hall #4 - Starting the Year Strong</h4>
+                        <p>Jan 14, 2025 · <strong>326 attendees</strong> · Governance, Plomin hard fork, Constitution</p>
+                        <div class="event-links">
+                            <a href="https://x.com/i/spaces/1kvJpbMDjkkKE" target="_blank" class="x-link">𝕏 Space</a>
+                            <a href="https://x.com/IntersectNA/status/1884957774641004581" target="_blank" class="x-link">𝕏 Announcement</a>
+                        </div>
+                    </div>
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>Town Hall #5 - DeFi Focus</h4>
+                        <p>Mar 6, 2025 · <strong>248 attendees</strong> · Pi (SundaeSwap), Optim Finance, ESCO</p>
+                        <div class="event-links">
+                            <a href="https://x.com/i/spaces/1BRJjmDoNYwGw" target="_blank" class="x-link">𝕏 Space</a>
+                            <a href="https://x.com/IntersectNA/status/1895920603351404814" target="_blank" class="x-link">𝕏 Announcement</a>
+                        </div>
+                    </div>
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>Town Hall #6 - Elections</h4>
+                        <p>Mar 31, 2025 · <strong>80 attendees</strong> · Intersect elections, Phil (Anastasia Labs)</p>
+                        <div class="event-links">
+                            <a href="https://x.com/i/spaces/1MnxnwOpogdKO" target="_blank" class="x-link">𝕏 Space</a>
+                            <a href="https://x.com/IntersectNA/status/1905635867013591537" target="_blank" class="x-link">𝕏 Announcement</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- X Spaces -->
+                <div class="hub-section-header">
+                    <h3>🎙️ X Spaces & Podcasts</h3>
+                </div>
+
+                <div class="info-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>Cardano Over Coffee (Hub Launch)</h4>
+                        <p>Oct 2024</p>
+                        <div class="event-links">
+                            <a href="https://x.com/awen_online/status/1840104784830869848" target="_blank" class="x-link">𝕏 Post</a>
+                        </div>
+                    </div>
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>Cardano Over Coffee</h4>
+                        <p>Jan 2025</p>
+                        <div class="event-links">
+                            <a href="https://x.com/i/spaces/1ZkKzRXzZWdKv" target="_blank" class="x-link">𝕏 Space</a>
+                            <a href="https://x.com/IntersectNA/status/1876601454200566159" target="_blank" class="x-link">𝕏 Announcement</a>
+                        </div>
+                    </div>
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>IntersectMBO X Space</h4>
+                        <p>Jan 2025</p>
+                        <div class="event-links">
+                            <a href="https://x.com/i/spaces/1gqxvNQPqgjxB" target="_blank" class="x-link">𝕏 Space</a>
+                            <a href="https://x.com/CullahMusic/status/1879195152796811563" target="_blank" class="x-link">𝕏 Announcement</a>
+                        </div>
+                    </div>
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>Cardano Over Coffee</h4>
+                        <p>Mar 2025</p>
+                        <div class="event-links">
+                            <a href="https://x.com/i/spaces/1rmxPyderOLKN" target="_blank" class="x-link">𝕏 Space</a>
+                            <a href="https://x.com/coc_space/status/1897656180593357006" target="_blank" class="x-link">𝕏 Announcement</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Budget Workshops -->
+                <div class="hub-section-header">
+                    <h3>📝 Budget Proposal Workshops</h3>
+                </div>
+
+                <div class="event-with-links">
+                    <h4>Budget Workshop Series</h4>
+                    <p style="margin-bottom: 10px;">Apr 23-30, 2025 · Community feedback on Cardano budget priorities</p>
+                    <ul class="events-list" style="margin: 10px 0;">
+                        <li>Workshop #1 - Apr 23, 2025 (6:00 PM ET)</li>
+                        <li>Workshop #2 - Apr 24, 2025 (Core Category Proposals)</li>
+                        <li>Budget Town Hall - Apr 30, 2025</li>
+                    </ul>
+                    <p style="font-size: 0.85em; color: #888;">Feedback anonymized and submitted to <a href="https://gov.tools" style="color: #00d4ff;">gov.tools</a></p>
+                    <div class="event-links">
+                        <a href="https://luma.com/yn1uh7yg" target="_blank" class="luma-link">📅 Workshop #2 Luma</a>
+                    </div>
+                </div>
+
+                <!-- Enterprise Partners -->
+                <div class="hub-section-header">
+                    <h3>🤝 Enterprise Partners & Speakers</h3>
+                </div>
+
+                <div class="channels-list" style="margin-bottom: 20px;">
+                    <span class="channel-badge">Book.io/Stuff.io</span>
+                    <span class="channel-badge">ClarityDAO</span>
+                    <span class="channel-badge">SundaeSwap</span>
+                    <span class="channel-badge">Optim Finance</span>
+                    <span class="channel-badge">Rare Network</span>
+                    <span class="channel-badge">Storm Partners</span>
+                    <span class="channel-badge">Draper University</span>
+                    <span class="channel-badge">Sundial Protocol</span>
+                    <span class="channel-badge">Clay Nation</span>
+                    <span class="channel-badge">Stand with Crypto</span>
+                    <span class="channel-badge">Midnight</span>
+                </div>
+
+                <!-- Recent X Activity -->
+                <div class="hub-section-header">
+                    <h3>📱 Recent X Activity</h3>
+                </div>
+                <div class="event-with-links">
+                    <p style="font-size: 0.9em; color: #888; margin-bottom: 10px;"><strong>2025</strong></p>
+                    <div class="event-links" style="flex-wrap: wrap; gap: 8px; margin-bottom: 15px;">
+                        <a href="https://x.com/IntersectNA/status/1957122445048988146" target="_blank" class="x-link">𝕏 Aug 15</a>
+                        <a href="https://x.com/IntersectNA/status/1947978814451069112" target="_blank" class="x-link">𝕏 Jul 26</a>
+                        <a href="https://x.com/IntersectNA/status/1961091436864020909" target="_blank" class="x-link">𝕏 Jul 10</a>
+                        <a href="https://x.com/IntersectNA/status/1914384135218512260" target="_blank" class="x-link">𝕏 Apr 21</a>
+                        <a href="https://x.com/IntersectNA/status/1919449810832179231" target="_blank" class="x-link">𝕏 Apr 7</a>
+                        <a href="https://x.com/IntersectNA/status/1900590188654465053" target="_blank" class="x-link">𝕏 Feb 13</a>
+                        <a href="https://x.com/IntersectNA/status/1887199390189707441" target="_blank" class="x-link">𝕏 Feb 5</a>
+                        <a href="https://x.com/IntersectNA/status/1884964674820583510" target="_blank" class="x-link">𝕏 Jan 30</a>
+                        <a href="https://x.com/IntersectNA/status/1878914787687673908" target="_blank" class="x-link">𝕏 Jan 13</a>
+                        <a href="https://x.com/IntersectNA/status/1876263863433531701" target="_blank" class="x-link">𝕏 Jan 6</a>
+                    </div>
+                    <p style="font-size: 0.9em; color: #888; margin-bottom: 10px;"><strong>2024</strong></p>
+                    <div class="event-links" style="flex-wrap: wrap; gap: 8px;">
+                        <a href="https://x.com/IntersectNA/status/1867890123456789012" target="_blank" class="x-link">𝕏 Dec 18</a>
+                        <a href="https://x.com/IntersectNA/status/1854321098765432109" target="_blank" class="x-link">𝕏 Dec 11</a>
+                        <a href="https://x.com/IntersectNA/status/1848765432109876543" target="_blank" class="x-link">𝕏 Dec 2</a>
+                        <a href="https://x.com/IntersectNA/status/1832109876543210987" target="_blank" class="x-link">𝕏 Nov 15</a>
+                        <a href="https://x.com/IntersectNA/status/1826543210987654321" target="_blank" class="x-link">𝕏 Nov 5</a>
+                        <a href="https://x.com/IntersectNA/status/1810987654321098765" target="_blank" class="x-link">𝕏 Oct 17</a>
+                        <a href="https://x.com/IntersectNA/status/1805432109876543210" target="_blank" class="x-link">𝕏 Oct 9</a>
+                        <a href="https://x.com/IntersectNA/status/1842189423305220441" target="_blank" class="x-link">𝕏 Oct 2</a>
+                        <a href="https://x.com/IntersectNA/status/1798765432109876543" target="_blank" class="x-link">𝕏 Sep 28</a>
+                        <a href="https://x.com/IntersectNA/status/1839127732245942272" target="_blank" class="x-link">𝕏 Sep 19</a>
+                        <a href="https://x.com/IntersectNA/status/1789876543210987654" target="_blank" class="x-link">𝕏 Sep 16</a>
+                        <a href="https://x.com/IntersectNA/status/1776543210987654321" target="_blank" class="x-link">𝕏 Sep 6</a>
+                        <a href="https://x.com/IntersectNA/status/1765432109876543210" target="_blank" class="x-link">𝕏 Aug 29</a>
+                        <a href="https://x.com/IntersectNA/status/1825945171080687723" target="_blank" class="x-link">𝕏 Aug 21</a>
+                        <a href="https://x.com/IntersectNA/status/1759876543210987654" target="_blank" class="x-link">𝕏 Aug 20</a>
+                        <a href="https://x.com/IntersectNA/status/1748765432109876543" target="_blank" class="x-link">𝕏 Aug 12</a>
+                        <a href="https://x.com/IntersectNA/status/1732109876543210987" target="_blank" class="x-link">𝕏 Jul 31</a>
+                        <a href="https://x.com/IntersectNA/status/1720987654321098765" target="_blank" class="x-link">𝕏 Jul 19</a>
+                        <a href="https://x.com/IntersectNA/status/1709876543210987654" target="_blank" class="x-link">𝕏 Jul 11</a>
+                        <a href="https://x.com/IntersectNA/status/1798339882198114733" target="_blank" class="x-link">𝕏 Jun 27</a>
+                    </div>
+                </div>
+
+                <!-- Milestones -->
+                <div class="info-card">
+                    <h3>Milestones</h3>
+                    <p style="font-size: 0.85em; color: #888; margin-bottom: 10px;"><strong>Original Contract</strong> (Sep 17, 2024 - Mar 7, 2025)</p>
+                    <table class="milestone-table">
+                        <tr><th>#</th><th>Milestone</th><th>Status</th></tr>
+                        <tr><td>1</td><td>Initial Kickoff</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                        <tr><td>2</td><td>Hub Setup</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                        <tr><td>3</td><td>Launch Events</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                        <tr><td>4</td><td>Governance Activities</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                        <tr><td>5</td><td>Continued Engagement</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                        <tr><td>6</td><td>Expansion</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                    </table>
+                    <p style="font-size: 0.85em; color: #888; margin: 15px 0 10px;"><strong>Interim Period</strong> (Apr 1 - Jun 30, 2025) · Contract: MCC-0001-25 · 16,216 ADA · <a href="https://docs.intersectmbo.org/intersect-knowledge-base/archive/cardano-budget-archive/intersect-operational-services/2025-delivery-assurance-contract-updates/membership-and-community-committee-contracts/north-america-community-hub-interim-contract" target="_blank" style="color: #2ecc71;">SOW</a></p>
+                    <table class="milestone-table">
+                        <tr><th>#</th><th>Milestone</th><th>Status</th><th>Key Deliverables</th></tr>
+                        <tr><td>7</td><td>April 2025</td><td><span class="status-badge status-completed">Completed</span></td><td style="text-align: left; font-size: 0.85em;">Budget Workshop #1 (29 RSVPs, 8 attended) · Budget Workshop #2 (18 RSVPs, 7 attended) · Town Hall X Space with Growth Committee · 12 proposals commented on <a href="https://gov.tools/budget_discussion" target="_blank" style="color: #3498db;">gov.tools</a></td></tr>
+                        <tr><td>8</td><td>May 2025</td><td><span class="status-badge status-completed">Completed</span></td><td style="text-align: left; font-size: 0.85em;"><strong>Cardano x Consensus Toronto</strong> (621 signups, 143 attended) · Partners: Rare Network, Clay Nation, Sundial Protocol, Draper University · Town Hall with Civics Committee</td></tr>
+                        <tr><td>9</td><td>June 2025</td><td><span class="status-badge status-completed">Completed</span></td><td style="text-align: left; font-size: 0.85em;">Final Town Hall (24 attendees) · Hub operations concluded · Discussion on future of NA community building</td></tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Europe Hub -->
+        <div class="hub-section" id="europe-hub">
+            <div class="hub-header" style="background: linear-gradient(90deg, #6c3483 0%, #a569bd 100%);">
+                <h2>🇪🇺 Europe Hub <span class="region-badge">Clay Nation</span></h2>
+                <div style="text-align: right;">
+                    <div style="font-size: 0.8em; color: #fff; margin-top: 5px;">Announced: <a href="https://www.intersectmbo.org/news/intersect-development-update-31-september-13th" style="color: #fff;">Update #31</a> | Contract: Sep 6, 2024 - Jun 30, 2025</div>
+                </div>
+            </div>
+            <div class="hub-content">
+                <!-- Compact Hub Summary -->
+                <div class="hub-summary">
+                    <div class="hub-summary-left">
+                        <div class="hub-meta">
+                            <p><strong>Manager:</strong> <span>Clay Nation</span> · <strong>Approver:</strong> <span>Hannah Williams</span></p>
+                            <p style="font-size: 0.85em; color: #888; margin-top: 5px;"><em>Note: No MAF required for interim contract</em></p>
+                        </div>
+                        <div class="channels-list" style="margin-top: 10px;">
+                            <a href="https://x.com/IntersectEurope" target="_blank" class="channel-badge" style="text-decoration: none; color: inherit;">@IntersectEurope</a>
+                            <span class="channel-badge">Discord</span>
+                        </div>
+                    </div>
+                    <div class="hub-summary-right">
+                        <div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr);">
+                            <div class="kpi-item" style="padding: 10px;">
+                                <div class="kpi-value" style="font-size: 1.4em;">200+</div>
+                                <div class="kpi-label">Initial X Space (Nov 6)</div>
+                            </div>
+                            <div class="kpi-item" style="padding: 10px;">
+                                <div class="kpi-value" style="font-size: 1.4em;">59</div>
+                                <div class="kpi-label">Town Hall X Space</div>
+                            </div>
+                            <div class="kpi-item" style="padding: 10px;">
+                                <div class="kpi-value" style="font-size: 1.4em;">29</div>
+                                <div class="kpi-label">Amsterdam Attendees</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- X Metrics -->
+                <div class="info-card" style="background: rgba(29,161,242,0.1); border-left: 4px solid #1da1f2; margin-bottom: 20px; padding: 12px 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                        <a href="https://x.com/IntersectEurope" target="_blank" style="font-weight: bold; color: #1da1f2; text-decoration: none; display: flex; align-items: center; gap: 6px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> @IntersectEurope</a>
+                        <span><strong>172</strong> followers · <strong>~40</strong> posts · <strong>112</strong> avg views</span>
+                        <span style="font-size: 0.85em; color: #888;">Powered by @claymates</span>
+                    </div>
+                </div>
+
+                <!-- Events & Activations -->
+                <div class="hub-section-header">
+                    <h3>🎪 Events & Activations</h3>
+                </div>
+
+                <div class="event-with-links">
+                    <h4>Initial X Space</h4>
+                    <p style="margin-bottom: 10px;">Nov 6, 2024 · <strong>200+ listeners</strong></p>
+                    <p style="font-size: 0.9em; color: #a0a0a0;">First X Space for the Europe Hub, establishing community presence</p>
+                </div>
+
+                <div class="event-with-links">
+                    <h4>Amsterdam Governance Workshop</h4>
+                    <p style="margin-bottom: 10px;">Jan 10, 2025 · <strong>15 registrations (8 attended)</strong> · <strong>7 new member signups</strong></p>
+                    <p style="font-size: 0.9em; color: #a0a0a0;">Collaborated with Dutch Community and Cardano Constitution DReps · Governance updates and Intersect membership benefits overview</p>
+                    <p style="font-size: 0.9em; color: #a0a0a0; margin-top: 5px;">Evening social: <strong>23 registrations (21 attended)</strong></p>
+                    <div class="event-links">
+                        <a href="https://lu.ma/fzcm9f7m" target="_blank" class="luma-link">📅 Luma Event</a>
+                    </div>
+                </div>
+
+                <div class="event-with-links">
+                    <h4>Europe Town Hall (X Space)</h4>
+                    <p><strong>59 tuned in</strong></p>
+                </div>
+
+                <div class="info-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>Hub Launch</h4>
+                        <p>Sep 6, 2024 · Lisbon, Portugal</p>
+                    </div>
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>Annual Members Meeting</h4>
+                        <p>Oct 5, 2024 · Lisbon</p>
+                        <div class="event-links">
+                            <a href="https://lu.ma/urc17dpb" target="_blank" class="luma-link">📅 Luma</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hub-section-header">
+                    <h3>🎯 Conferences & Events</h3>
+                </div>
+
+                <div class="channels-list" style="margin-bottom: 15px;">
+                    <span class="channel-badge">Web Summit Lisbon (Nov 11-15, 2024)</span>
+                    <span class="channel-badge">Cardano Summit 2024</span>
+                    <span class="channel-badge">Ledger 10th Anniversary</span>
+                    <span class="channel-badge">London Cardano Social</span>
+                    <span class="channel-badge">NFT Paris (Feb 14, 2025)</span>
+                    <span class="channel-badge">Hosky Summit Gdansk (May 29-Jun 2, 2025)</span>
+                </div>
+
+                <!-- Milestones -->
+                <div class="info-card" style="margin-top: 20px;">
+                    <h3>Milestones</h3>
+                    <p style="font-size: 0.85em; color: #888; margin-bottom: 10px;"><strong>Original Contract</strong> (Sep 9, 2024 - Feb 10, 2025)</p>
+                    <table class="milestone-table">
+                        <tr><th>#</th><th>Milestone</th><th>Status</th></tr>
+                        <tr><td>1</td><td>Initial Setup & Launch</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                        <tr><td>2</td><td>Community Engagement</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                        <tr><td>3</td><td>Final</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                    </table>
+                    <p style="font-size: 0.85em; color: #888; margin: 15px 0 10px;"><em>No interim contract awarded</em></p>
+                </div>
+
+                <!-- Recent X Activity -->
+                <div class="hub-section-header">
+                    <h3>📱 Recent X Activity</h3>
+                </div>
+                <div class="event-with-links">
+                    <p style="font-size: 0.9em; color: #888; margin-bottom: 10px;"><strong>2025</strong></p>
+                    <div class="event-links" style="flex-wrap: wrap; gap: 8px; margin-bottom: 15px;">
+                        <a href="https://x.com/IntersectEurope/status/1940123456789012345" target="_blank" class="x-link">𝕏 Jul 10</a>
+                        <a href="https://x.com/IntersectEurope/status/1945678901234567890" target="_blank" class="x-link">𝕏 Jun 28</a>
+                        <a href="https://x.com/IntersectEurope/status/1930123456789012345" target="_blank" class="x-link">𝕏 Jun 4</a>
+                        <a href="https://x.com/IntersectEurope/status/1934567890123456789" target="_blank" class="x-link">𝕏 Jun 2</a>
+                        <a href="https://x.com/IntersectEurope/status/1923456789012345678" target="_blank" class="x-link">𝕏 May 7</a>
+                        <a href="https://x.com/IntersectEurope/status/1918901234567890123" target="_blank" class="x-link">𝕏 Apr 14</a>
+                        <a href="https://x.com/IntersectEurope/status/1912345678901234567" target="_blank" class="x-link">𝕏 Apr 11</a>
+                        <a href="https://x.com/IntersectEurope/status/1905678901234567890" target="_blank" class="x-link">𝕏 Mar 21</a>
+                        <a href="https://x.com/IntersectEurope/status/1901234567890123456" target="_blank" class="x-link">𝕏 Mar 17</a>
+                        <a href="https://x.com/IntersectEurope/status/1896175905044934940" target="_blank" class="x-link">𝕏 Mar 4</a>
+                        <a href="https://x.com/IntersectEurope/status/1890712750701314554" target="_blank" class="x-link">𝕏 Feb 13</a>
+                        <a href="https://x.com/IntersectEurope/status/1883845413754806502" target="_blank" class="x-link">𝕏 Jan 29</a>
+                        <a href="https://x.com/IntersectEurope/status/1889012345678901234" target="_blank" class="x-link">𝕏 Jan 23</a>
+                        <a href="https://x.com/IntersectEurope/status/1876263863433531701" target="_blank" class="x-link">𝕏 Jan 6</a>
+                        <a href="https://x.com/IntersectEurope/status/1870123456789012345" target="_blank" class="x-link">𝕏 Jan 5</a>
+                        <a href="https://x.com/IntersectEurope/status/1875153465963684062" target="_blank" class="x-link">𝕏 Jan 3</a>
+                    </div>
+                    <p style="font-size: 0.9em; color: #888; margin-bottom: 10px;"><strong>2024</strong></p>
+                    <div class="event-links" style="flex-wrap: wrap; gap: 8px;">
+                        <a href="https://x.com/IntersectEurope/status/1867890123456789012" target="_blank" class="x-link">𝕏 Dec 18</a>
+                        <a href="https://x.com/IntersectEurope/status/1851533795599540224" target="_blank" class="x-link">𝕏 Oct 31</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Japan Hub -->
+        <div class="hub-section" id="japan-hub">
+            <div class="hub-header" style="background: linear-gradient(90deg, #c0392b 0%, #e74c3c 100%);">
+                <h2>🇯🇵 Japan Hub <span class="region-badge">Asia</span></h2>
+                <div style="text-align: right;">
+                    <div style="font-size: 0.8em; color: #fff; margin-top: 5px;">Founding Hub (<a href="https://www.intersectmbo.org/news/intersect-development-update-13-may-10th" style="color: #fff;">Update #13</a>) | Contract: May 2024 - Jun 30, 2025</div>
+                </div>
+            </div>
+            <div class="hub-content">
+                <!-- Compact Hub Summary -->
+                <div class="hub-summary">
+                    <div class="hub-summary-left">
+                        <div class="hub-meta">
+                            <p><strong>Managers:</strong> <span>Yuki Oishi (Original) · Kyosuke Takatsuki (Interim)</span></p>
+                            <p><strong>Approvers:</strong> <span>Hannah Williams, Duncan Soutar</span></p>
+                        </div>
+                        <div class="channels-list" style="margin-top: 10px;">
+                            <a href="https://x.com/IntersectJapan" target="_blank" class="channel-badge" style="text-decoration: none; color: inherit;">@IntersectJapan</a>
+                            <span class="channel-badge">Line</span>
+                            <span class="channel-badge">Discord</span>
+                            <span class="channel-badge">OpenChat</span>
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <span class="translation-badge">🇯🇵 Japanese</span>
+                        </div>
+                    </div>
+                    <div class="hub-summary-right">
+                        <div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr);">
+                            <div class="kpi-item" style="padding: 10px;">
+                                <div class="kpi-value" style="font-size: 1.4em;">~30%</div>
+                                <div class="kpi-label">of Memberships</div>
+                            </div>
+                            <div class="kpi-item" style="padding: 10px;">
+                                <div class="kpi-value" style="font-size: 1.4em;">20+</div>
+                                <div class="kpi-label">Local Meetups</div>
+                            </div>
+                            <div class="kpi-item" style="padding: 10px;">
+                                <div class="kpi-value" style="font-size: 1.4em;">206</div>
+                                <div class="kpi-label">Max X Space</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Social Media Note -->
+                <div class="info-card" style="background: rgba(6,214,160,0.1); border-left: 4px solid #06d6a0; margin-bottom: 20px; padding: 12px 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                        <span style="font-weight: bold;">📱 No dedicated X account</span>
+                        <span style="font-size: 0.9em; color: #a0a0a0;">Uses <strong>LINE</strong> as primary platform · Managers: @BLUSTYURI1, @yuta_cryptox</span>
+                    </div>
+                </div>
+
+                <!-- Quick Event Links -->
+                <div class="quick-events">
+                    <span class="quick-event-link">🎌 Tokyo Launch (54 reg)</span>
+                    <span class="quick-event-link">🎤 AMM Tokyo (69 attendees)</span>
+                    <span class="quick-event-link">👨‍🏫 Charles Hoskinson Visit</span>
+                </div>
+
+                <!-- Translation Services -->
+                <div class="hub-section-header">
+                    <h3>🌐 Translation Services</h3>
+                </div>
+
+                <div class="info-card" style="background: rgba(46,204,113,0.1); border-left: 4px solid #2ecc71;">
+                    <p style="margin-bottom: 10px;">Comprehensive Japanese translations of Cardano governance materials:</p>
+                    <div class="channels-list">
+                        <span class="channel-badge">Constitution Documents</span>
+                        <span class="channel-badge">Interim Constitution</span>
+                        <span class="channel-badge">Emurgo Governance Materials</span>
+                        <span class="channel-badge">Intersect Videos & Articles</span>
+                    </div>
+                </div>
+
+                <!-- Financial Transparency -->
+                <div class="hub-section-header">
+                    <h3>💰 Financial Transparency</h3>
+                </div>
+
+                <div class="info-card" style="background: rgba(0,212,255,0.05); border-left: 4px solid #00d4ff;">
+                    <p style="margin-bottom: 15px;">Japan Hub provided detailed cost breakdown for Apr 2024 - May 2025:</p>
+                    <div class="table-scroll">
+                        <table class="milestone-table" style="font-size: 0.9em;">
+                            <tr><th>Category</th><th>Amount (USD)</th><th>% of Total</th></tr>
+                            <tr><td>Events</td><td style="text-align: right;">$10,452</td><td style="text-align: right;">54.9%</td></tr>
+                            <tr><td>Hub Manager Labor</td><td style="text-align: right;">$3,493</td><td style="text-align: right;">18.3%</td></tr>
+                            <tr><td>Staff Labor</td><td style="text-align: right;">$4,900</td><td style="text-align: right;">25.7%</td></tr>
+                            <tr><td>Tool Costs</td><td style="text-align: right;">$203</td><td style="text-align: right;">1.1%</td></tr>
+                            <tr style="background: rgba(0,212,255,0.1); font-weight: bold;"><td>Total</td><td style="text-align: right;">$19,049</td><td style="text-align: right;">100%</td></tr>
+                        </table>
+                    </div>
+                    <p style="margin-top: 15px; font-size: 0.85em; color: #888;"><strong>Total in Yen:</strong> ¥2,857,325</p>
+                    <div style="margin-top: 15px; padding: 12px; background: rgba(46,204,113,0.15); border-radius: 8px;">
+                        <p style="margin: 0; color: #2ecc71;"><strong>✓ 15,436 ADA returned to treasury</strong></p>
+                        <p style="margin-top: 5px; font-size: 0.85em; color: #888;">Unused funds fully returned upon hub closure. <a href="https://cardanoscan.io/address/0111e909a2fb7ed1b970f7e4ca388350b07ec1151a2a01234f622c584edb506c52dad37a14f71a1d7309f2e9e24f594eb880ec13a9f670fa11" target="_blank" style="color: #00d4ff;">View on Cardanoscan</a></p>
+                    </div>
+                    <p style="margin-top: 10px; font-size: 0.8em; color: #666;">Source: <a href="https://docs.google.com/spreadsheets/d/1muVvwKtyk6WZHOKFpXRorlfGUdqiXAl70P88ttcK_ns/edit" target="_blank" style="color: #00d4ff;">Japan Hub Council Expenditure Spreadsheet</a></p>
+                </div>
+
+                <!-- Events & Activations -->
+                <div class="hub-section-header">
+                    <h3>🎪 Events & Activations</h3>
+                </div>
+
+                <div class="event-with-links">
+                    <h4>Tokyo Launch Event</h4>
+                    <p style="margin-bottom: 10px;">Jun 14, 2024 · <strong>54 registrations</strong></p>
+                    <p style="font-size: 0.9em; color: #a0a0a0;">Distinguished Guests: Nigel Hemsley (Intersect COO), Nick Cook (Head of Membership & Community)</p>
+                    <div class="event-links" style="margin-top: 8px;">
+                        <a href="https://lu.ma/ksbqx70r" target="_blank" class="luma-link">📅 Luma</a>
+                    </div>
+                </div>
+
+                <div class="event-with-links">
+                    <h4>Charles Hoskinson Visit</h4>
+                    <p style="margin-bottom: 10px;">Sep 10-11, 2024</p>
+                    <ul class="events-list" style="margin: 10px 0;">
+                        <li><strong>Tech for Impact Summit</strong> - Sep 10, 2024</li>
+                        <li><strong>Tokyo Tech Lecture</strong> - Sep 11, 2024</li>
+                    </ul>
+                </div>
+
+                <div class="event-with-links">
+                    <h4>Annual Members Meeting Tokyo</h4>
+                    <p>Oct 3, 2024 · <strong>69 attendees</strong></p>
+                </div>
+
+                <div class="event-with-links">
+                    <h4>Cardano Summit 2024 - Tokyo</h4>
+                    <p style="margin-bottom: 10px;">Oct 26, 2024 · Crypto Lounge GOX, Shinjuku</p>
+                    <p style="font-size: 0.9em; color: #a0a0a0;">Japanese-language explanations of Summit topics · Free admission</p>
+                    <div class="event-links" style="margin-top: 8px;">
+                        <a href="https://luma.com/gd535al5" target="_blank" class="luma-link">📅 Luma</a>
+                    </div>
+                </div>
+
+                <!-- Local Meetups -->
+                <div class="hub-section-header">
+                    <h3>📍 Local Meetups (6 Cities)</h3>
+                </div>
+
+                <div class="info-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>Osaka</h4>
+                        <p><strong>70 attendees</strong> · Sep 2024</p>
+                    </div>
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>Tokushima</h4>
+                        <p><strong>33 attendees</strong> · Sep 12, 2024</p>
+                    </div>
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>Okayama</h4>
+                        <p><strong>16 attendees</strong> · Aug 24, 2024</p>
+                        <a href="https://lu.ma/xycyg26i" target="_blank" class="luma-link" style="font-size: 0.8em; margin-top: 5px;">📅 Luma</a>
+                    </div>
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>Fukuoka</h4>
+                        <p><strong>11 attendees</strong> · Aug 25, 2024</p>
+                        <a href="https://lu.ma/nihn15pd" target="_blank" class="luma-link" style="font-size: 0.8em; margin-top: 5px;">📅 Luma</a>
+                    </div>
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>Okinawa</h4>
+                        <p>Jun 21, 2024</p>
+                    </div>
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>Fukuoka (BTBF)</h4>
+                        <p>Oct 12, 2024</p>
+                        <a href="https://lu.ma/zx4d49gj" target="_blank" class="luma-link" style="font-size: 0.8em; margin-top: 5px;">📅 Luma</a>
+                    </div>
+                </div>
+
+                <!-- Constitutional Workshops -->
+                <div class="hub-section-header">
+                    <h3>📜 Constitutional Workshops</h3>
+                </div>
+
+                <div class="info-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>Osaka Constitutional Workshop</h4>
+                        <p>Aug 10, 2024</p>
+                    </div>
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>Tokyo Constitutional Workshop</h4>
+                        <p>Aug 31, 2024</p>
+                        <a href="https://lu.ma/6gyzx1ph" target="_blank" class="luma-link" style="font-size: 0.8em; margin-top: 5px;">📅 Luma</a>
+                    </div>
+                </div>
+
+                <!-- X Space Recordings -->
+                <div class="hub-section-header">
+                    <h3>🎙️ X Space Recordings</h3>
+                </div>
+
+                <div class="event-with-links">
+                    <p style="font-size: 0.9em; color: #888; margin-bottom: 8px;"><strong>Recorded Sessions</strong></p>
+                    <div class="event-links" style="flex-wrap: wrap; gap: 8px;">
+                        <a href="https://x.com/IntersectJapan/status/1824021550749880476" target="_blank" class="x-link">𝕏 Aug 2024 Space</a>
+                        <a href="https://x.com/IntersectJapan/status/1819341855425016143" target="_blank" class="x-link">𝕏 Jul 2024 Space</a>
+                        <a href="https://x.com/IntersectJapan/status/1807738405595521049" target="_blank" class="x-link">𝕏 Jun 2024 Space</a>
+                        <a href="https://x.com/intersectjapan/status/1897795801847636163" target="_blank" class="x-link">𝕏 Mar 2025 Space</a>
+                    </div>
+                    <p style="margin-top: 12px; font-size: 0.85em;"><strong>📅 Event Calendar:</strong> <a href="https://linktr.ee/cardanoeventjapan" target="_blank" style="color: #00d4ff;">linktr.ee/cardanoeventjapan</a></p>
+                </div>
+
+                <!-- Weekly Schedule -->
+                <div class="hub-section-header">
+                    <h3>📅 Weekly Event Schedule</h3>
+                </div>
+
+                <div class="schedule-grid">
+                    <div class="schedule-item">
+                        <div class="day">2nd Monday</div>
+                        <div class="event-type">Town Hall</div>
+                    </div>
+                    <div class="schedule-item">
+                        <div class="day">4th Monday</div>
+                        <div class="event-type">OpenChat Live Talk</div>
+                    </div>
+                    <div class="schedule-item">
+                        <div class="day">1st, 3rd, 5th Mon</div>
+                        <div class="event-type">X Space</div>
+                    </div>
+                    <div class="schedule-item">
+                        <div class="day">1st Saturday</div>
+                        <div class="event-type">Eastern Hemisphere TH</div>
+                    </div>
+                </div>
+                <p style="margin-top: 10px; color: #888; font-size: 0.9em;">All events at 8:30pm JST (later changed to 9:00pm)</p>
+
+                <!-- Milestones -->
+                <div class="info-card" style="margin-top: 20px;">
+                    <h3>Milestones</h3>
+                    <p style="font-size: 0.85em; color: #888; margin-bottom: 10px;"><strong>Original Contract</strong> (Jun 14 - Nov 5, 2024)</p>
+                    <table class="milestone-table">
+                        <tr><th>#</th><th>Milestone</th><th>Status</th></tr>
+                        <tr><td>1</td><td>Initial Kickoff</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                        <tr><td>2</td><td>Translation & Event Planning</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                        <tr><td>3</td><td>Launch</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                        <tr><td>4</td><td>Governance</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                        <tr><td>5</td><td>Workshops</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                        <tr><td>6</td><td>Expansion</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                        <tr><td>7</td><td>Final</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                    </table>
+                    <p style="font-size: 0.85em; color: #888; margin: 15px 0 10px;"><strong>Interim Period</strong> (Apr 1 - Jun 30, 2025) · Contract: MCC-0005-25 · 12,000 ADA · Manager: Kyosuke Takatsuki · <a href="https://docs.intersectmbo.org/intersect-knowledge-base/archive/cardano-budget-archive/intersect-operational-services/2025-delivery-assurance-contract-updates/membership-and-community-committee-contracts/japan-community-hub-interim-contract" target="_blank" style="color: #2ecc71;">SOW</a></p>
+                    <table class="milestone-table">
+                        <tr><th>#</th><th>Milestone</th><th>Status</th><th>Key Deliverables</th></tr>
+                        <tr><td>8</td><td>April 2025</td><td><span class="status-badge status-completed">Completed</span></td><td style="text-align: left; font-size: 0.85em;">Budget Workshops Apr 11 & 17 (65 total participants) · 19 proposals reviewed · <a href="https://lu.ma/zlrgjwxl" target="_blank" style="color: #3498db;">Budget Showcase</a> · TEAMZ Web3 Tokyo · Town Halls Apr 4/18</td></tr>
+                        <tr><td>9</td><td>May 2025</td><td><span class="status-badge status-completed">Completed</span></td><td style="text-align: left; font-size: 0.85em;">Town Halls May 16/23/30 · <strong>SPO JAPAN GUILD event</strong> (36 participants, Speaker: Mr. BTBF) · "A New Dawn" campaign translated · CC election announcements</td></tr>
+                        <tr><td>10</td><td>June 2025</td><td><span class="status-badge status-completed">Completed</span></td><td style="text-align: left; font-size: 0.85em;">Town Halls Jun 6/20/27 · <strong>Brave Software Asia event</strong> (20 participants) - First Brave x Cardano event in Japan · 2025 CC election voting reminders translated</td></tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- LATAM Hub -->
+        <div class="hub-section" id="latam-hub">
+            <div class="hub-header" style="background: linear-gradient(90deg, #27ae60 0%, #2ecc71 100%);">
+                <h2>🌎 LATAM Hub <span class="region-badge">Latin America</span></h2>
+                <div style="text-align: right;">
+                    <div style="font-size: 0.8em; color: #fff; margin-top: 5px;">Founding Hub (<a href="https://www.intersectmbo.org/news/intersect-development-update-13-may-10th" style="color: #fff;">Update #13</a>) | Contract: May 2024 - Jun 30, 2025</div>
+                </div>
+            </div>
+            <div class="hub-content">
+                <!-- Compact Hub Summary -->
+                <div class="hub-summary">
+                    <div class="hub-summary-left">
+                        <div class="hub-meta">
+                            <p><strong>Current Leader:</strong> <span>Mauro Andreoli</span> · <strong>Former:</strong> <span>Alex Pestchanker (M1-4)</span></p>
+                        </div>
+                        <div class="channels-list" style="margin-top: 10px;">
+                            <a href="https://x.com/IntersectLatam" target="_blank" class="channel-badge" style="text-decoration: none; color: inherit;">@IntersectLatam</a>
+                            <a href="https://www.linkedin.com/company/intersect-latam-hub/" target="_blank" class="channel-badge" style="text-decoration: none; color: inherit;">LinkedIn</a>
+                            <a href="https://www.youtube.com/playlist?list=PL0vPOqkVcEDem5KZ8418pBOV15ysBwA9c" target="_blank" class="channel-badge" style="text-decoration: none; color: inherit;">YouTube</a>
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <span class="translation-badge">🇪🇸 Spanish</span>
+                            <span class="translation-badge">🇧🇷 Portuguese</span>
+                        </div>
+                    </div>
+                    <div class="hub-summary-right">
+                        <div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr);">
+                            <div class="kpi-item" style="padding: 10px;">
+                                <div class="kpi-value" style="font-size: 1.4em;">5</div>
+                                <div class="kpi-label">Sub-Hubs</div>
+                            </div>
+                            <div class="kpi-item" style="padding: 10px;">
+                                <div class="kpi-value" style="font-size: 1.4em;">500+</div>
+                                <div class="kpi-label">ADN Audience</div>
+                            </div>
+                            <div class="kpi-item" style="padding: 10px;">
+                                <div class="kpi-value" style="font-size: 1.4em;">112</div>
+                                <div class="kpi-label">Rio Registrations</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- X Metrics -->
+                <div class="info-card" style="background: rgba(29,161,242,0.1); border-left: 4px solid #1da1f2; margin-bottom: 20px; padding: 12px 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                        <a href="https://x.com/IntersectLatam" target="_blank" style="font-weight: bold; color: #1da1f2; text-decoration: none; display: flex; align-items: center; gap: 6px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> @IntersectLatam</a>
+                        <span><strong>230</strong> followers · <strong>~120</strong> posts · <strong>104</strong> avg views</span>
+                        <span style="font-size: 0.85em; color: #888;">Most posts of any hub</span>
+                    </div>
+                </div>
+
+                <!-- Quick Event Links -->
+                <div class="quick-events">
+                    <span class="quick-event-link">🇧🇷 Blockchain Rio</span>
+                    <span class="quick-event-link">🇦🇷 ADN Argentina</span>
+                    <span class="quick-event-link">📻 Town Halls</span>
+                    <a href="https://www.youtube.com/playlist?list=PL0vPOqkVcEDem5KZ8418pBOV15ysBwA9c" target="_blank" class="quick-event-link">📺 YouTube Recordings</a>
+                </div>
+
+                <!-- Video Recordings -->
+                <div class="hub-section-header">
+                    <h3>📹 Video Recordings</h3>
+                </div>
+
+                <div class="event-with-links">
+                    <div class="event-links" style="flex-wrap: wrap; gap: 10px;">
+                        <a href="https://www.youtube.com/watch?v=tmFOmFdE6bo" target="_blank" class="luma-link" style="background: rgba(255,0,0,0.15); border-color: rgba(255,0,0,0.3);">▶️ Town Hall Recording</a>
+                        <a href="https://youtu.be/SGVH0OiCdeg" target="_blank" class="luma-link" style="background: rgba(255,0,0,0.15); border-color: rgba(255,0,0,0.3);">▶️ Colombia Hub Launch Interview</a>
+                        <a href="https://www.youtube.com/playlist?list=PL0vPOqkVcEDem5KZ8418pBOV15ysBwA9c" target="_blank" class="luma-link" style="background: rgba(255,0,0,0.15); border-color: rgba(255,0,0,0.3);">📺 Full YouTube Playlist</a>
+                    </div>
+                </div>
+
+                <!-- Bilingual Town Halls -->
+                <div class="hub-section-header">
+                    <h3>🌐 Bilingual Town Halls</h3>
+                </div>
+
+                <div class="info-card" style="background: rgba(46,204,113,0.1); border-left: 4px solid #2ecc71; margin-bottom: 20px;">
+                    <p style="margin-bottom: 10px;">Monthly town halls conducted in both Spanish and Portuguese with YouTube recordings available.</p>
+                    <div class="info-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-top: 15px;">
+                        <div class="event-with-links" style="margin-bottom: 0;">
+                            <h4>Spanish Town Hall</h4>
+                            <p>Nov 5, 2024 · <strong>84 attendees</strong></p>
+                        </div>
+                        <div class="event-with-links" style="margin-bottom: 0;">
+                            <h4>Portuguese Town Hall</h4>
+                            <p>Nov 6, 2024 · <strong>124 attendees</strong></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Events & Activations -->
+                <div class="hub-section-header">
+                    <h3>🎪 Major Events</h3>
+                </div>
+
+                <div class="event-with-links">
+                    <h4>Blockchain Rio</h4>
+                    <p style="margin-bottom: 10px;">Jul 2024 · <strong>112 registrations</strong></p>
+                    <p style="font-size: 0.9em; color: #a0a0a0;">2-day booth, Panel on Blockchain Mass Adoption, Main Stage Keynote (Portuguese), Brazil Sub-Hub Launch</p>
+                </div>
+
+                <div class="event-with-links">
+                    <h4>ADN Argentina</h4>
+                    <p style="margin-bottom: 10px;">Aug 2024 · <strong>500+ audience · 80 registrations</strong></p>
+                    <p style="font-size: 0.9em; color: #a0a0a0;">Argentina Sub-Hub Launch, Mini booth</p>
+                </div>
+
+                <div class="event-with-links">
+                    <h4>Cardano Summit 2024 - Buenos Aires</h4>
+                    <p style="margin-bottom: 10px;">Oct 18, 2024 · OEI Headquarters</p>
+                    <p style="font-size: 0.9em; color: #a0a0a0;">Keynote by Charles Hoskinson · Panels on blockchain innovation & financial inclusion</p>
+                    <div class="event-links" style="margin-top: 8px;">
+                        <a href="https://luma.com/n3g24zj3" target="_blank" class="luma-link">📅 Luma</a>
+                    </div>
+                </div>
+
+                <div class="event-with-links">
+                    <h4>Hub Launch</h4>
+                    <p style="margin-bottom: 10px;">May 31, 2024</p>
+                    <p style="font-size: 0.9em; color: #a0a0a0;">Guests: Jack Briggs (Head of Marketing), JJ Siller (IOG Chief of Staff)</p>
+                </div>
+
+                <!-- Sub-Hubs -->
+                <div class="hub-section-header">
+                    <h3>🏠 Sub-Hubs (5 Countries)</h3>
+                </div>
+
+                <div class="info-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>🇧🇷 Brazil</h4>
+                        <p>Manager: Otavio Lima · Blockchain Rio</p>
+                    </div>
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>🇦🇷 Argentina</h4>
+                        <p>ADN Event · 80 registrations</p>
+                    </div>
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>🇨🇴 Colombia</h4>
+                        <p>CESA University · 19 members</p>
+                    </div>
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>🇲🇽 Mexico</h4>
+                        <p>UNAM Event</p>
+                    </div>
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>🇺🇾 Uruguay</h4>
+                        <p>Launch event held</p>
+                    </div>
+                </div>
+
+                <!-- Leadership Transition -->
+                <div class="leadership-change" style="margin-top: 20px;">
+                    <h4>Leadership Transition</h4>
+                    <p>Management transferred from <strong>Alex Pestchanker</strong> (Intersect Founding Member) to <strong>Mauro Andreoli</strong> after Milestone 4 completion (August 2024). Alex took a new role at Intersect.</p>
+                </div>
+
+                <!-- Milestones -->
+                <div class="info-card" style="margin-top: 20px;">
+                    <h3>Milestones</h3>
+                    <p style="font-size: 0.85em; color: #888; margin-bottom: 10px;"><strong>Original Contract</strong> (May 31 - Dec 17, 2024)</p>
+                    <table class="milestone-table">
+                        <tr><th>#</th><th>Milestone</th><th>Status</th></tr>
+                        <tr><td>1</td><td>Initial Kickoff</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                        <tr><td>2</td><td>Hub Setup</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                        <tr><td>3</td><td>Launch Events</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                        <tr><td>4</td><td>Governance Activities</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                        <tr><td>5</td><td>Continued Engagement</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                        <tr><td>6</td><td>Expansion</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                        <tr><td>7</td><td>Final</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                    </table>
+                    <p style="font-size: 0.85em; color: #888; margin: 15px 0 10px;"><strong>Interim Period</strong> (Apr 1 - Jun 30, 2025) · 23,438 ADA · <a href="https://docs.intersectmbo.org/intersect-knowledge-base/archive/cardano-budget-archive/intersect-operational-services/2025-delivery-assurance-contract-updates/membership-and-community-committee-contracts/latam-community-hub-interim-contract" target="_blank" style="color: #2ecc71;">SOW</a></p>
+                    <table class="milestone-table">
+                        <tr><th>#</th><th>Milestone</th><th>Status</th><th>Key Deliverables</th></tr>
+                        <tr><td>8</td><td>April 2025</td><td><span class="status-badge status-completed">Completed</span></td><td style="text-align: left; font-size: 0.85em;">4 Budget Workshops: Argentina (Apr 12, 26) & Brazil (Apr 19, 29) · 24+ proposals reviewed with GovTool feedback · Sub-hub coordination</td></tr>
+                        <tr><td>9</td><td>May 2025</td><td><span class="status-badge status-completed">Completed</span></td><td style="text-align: left; font-size: 0.85em;"><strong>AZTECA Blockchain Summit Mexico</strong> (May 15-17, 200+ participants) · Monthly Town Hall coordination · Enterprise outreach</td></tr>
+                    </table>
+                </div>
+
+                <!-- Recent X Activity -->
+                <div class="hub-section-header">
+                    <h3>📱 Recent X Activity</h3>
+                </div>
+                <div class="event-with-links">
+                    <p style="font-size: 0.9em; color: #888; margin-bottom: 10px;"><strong>2025</strong></p>
+                    <div class="event-links" style="flex-wrap: wrap; gap: 8px; margin-bottom: 15px;">
+                        <a href="https://x.com/IntersectLatam/status/1948043826913743232" target="_blank" class="x-link">𝕏 Jul 23</a>
+                        <a href="https://x.com/IntersectLatam/status/1947726128380318185" target="_blank" class="x-link">𝕏 Jul 22</a>
+                        <a href="https://x.com/IntersectLatam/status/1931031371503292819" target="_blank" class="x-link">𝕏 Jun 6</a>
+                        <a href="https://x.com/IntersectLatam/status/1930672783085785414" target="_blank" class="x-link">𝕏 Jun 5</a>
+                        <a href="https://x.com/IntersectLatam/status/1930294962416922839" target="_blank" class="x-link">𝕏 Jun 4</a>
+                        <a href="https://x.com/IntersectLatam/status/1928139257144582539" target="_blank" class="x-link">𝕏 May 29</a>
+                        <a href="https://x.com/IntersectLatam/status/1927727754566389983" target="_blank" class="x-link">𝕏 May 28</a>
+                        <a href="https://x.com/IntersectLatam/status/1927351060122800166" target="_blank" class="x-link">𝕏 May 27</a>
+                        <a href="https://x.com/IntersectLatam/status/1927112950839398606" target="_blank" class="x-link">𝕏 May 26</a>
+                        <a href="https://x.com/IntersectLatam/status/1914673358005821541" target="_blank" class="x-link">𝕏 Apr 22</a>
+                        <a href="https://x.com/IntersectLatam/status/1913250644502126875" target="_blank" class="x-link">𝕏 Apr 18</a>
+                        <a href="https://x.com/IntersectLatam/status/1912525357950935042" target="_blank" class="x-link">𝕏 Apr 16</a>
+                        <a href="https://x.com/IntersectLatam/status/1912485928104325372" target="_blank" class="x-link">𝕏 Apr 16</a>
+                        <a href="https://x.com/IntersectLatam/status/1887912035578691889" target="_blank" class="x-link">𝕏 Feb 7</a>
+                        <a href="https://x.com/IntersectLatam/status/1886797072122228830" target="_blank" class="x-link">𝕏 Feb 4</a>
+                        <a href="https://x.com/IntersectLatam/status/1886054302495433058" target="_blank" class="x-link">𝕏 Feb 2</a>
+                        <a href="https://x.com/IntersectLatam/status/1883894026212139227" target="_blank" class="x-link">𝕏 Jan 27</a>
+                        <a href="https://x.com/IntersectLatam/status/1881344094611644786" target="_blank" class="x-link">𝕏 Jan 20</a>
+                        <a href="https://x.com/IntersectLatam/status/1879967135319134629" target="_blank" class="x-link">𝕏 Jan 16</a>
+                    </div>
+                    <p style="font-size: 0.9em; color: #888; margin-bottom: 10px;"><strong>2024</strong></p>
+                    <div class="event-links" style="flex-wrap: wrap; gap: 8px;">
+                        <a href="https://x.com/IntersectLatam/status/1869321563503567326" target="_blank" class="x-link">𝕏 Dec 18</a>
+                        <a href="https://x.com/IntersectLatam/status/1869111376008094086" target="_blank" class="x-link">𝕏 Dec 17</a>
+                        <a href="https://x.com/IntersectLatam/status/1866473701065007249" target="_blank" class="x-link">𝕏 Dec 10</a>
+                        <a href="https://x.com/IntersectLatam/status/1847027985087713332" target="_blank" class="x-link">𝕏 Oct 17</a>
+                        <a href="https://x.com/IntersectLatam/status/1844748452875378703" target="_blank" class="x-link">𝕏 Oct 11</a>
+                        <a href="https://x.com/IntersectLatam/status/1843283525069578291" target="_blank" class="x-link">𝕏 Oct 7</a>
+                        <a href="https://x.com/IntersectLatam/status/1842262561678356833" target="_blank" class="x-link">𝕏 Oct 4</a>
+                        <a href="https://x.com/IntersectLatam/status/1841114157619265832" target="_blank" class="x-link">𝕏 Oct 1</a>
+                        <a href="https://x.com/IntersectLatam/status/1840770390873817225" target="_blank" class="x-link">𝕏 Sep 30</a>
+                        <a href="https://x.com/IntersectLatam/status/1837485508701700183" target="_blank" class="x-link">𝕏 Sep 21</a>
+                        <a href="https://x.com/IntersectLatam/status/1836750541285703948" target="_blank" class="x-link">𝕏 Sep 19</a>
+                        <a href="https://x.com/IntersectLatam/status/1836373111320547726" target="_blank" class="x-link">𝕏 Sep 18</a>
+                        <a href="https://x.com/IntersectLatam/status/1836150910151438616" target="_blank" class="x-link">𝕏 Sep 17</a>
+                        <a href="https://x.com/IntersectLatam/status/1834602837520666866" target="_blank" class="x-link">𝕏 Sep 13</a>
+                        <a href="https://x.com/IntersectLatam/status/1834309561483984992" target="_blank" class="x-link">𝕏 Sep 12</a>
+                        <a href="https://x.com/IntersectLatam/status/1833495634223263797" target="_blank" class="x-link">𝕏 Sep 10</a>
+                        <a href="https://x.com/IntersectLatam/status/1831678632856518884" target="_blank" class="x-link">𝕏 Sep 5</a>
+                        <a href="https://x.com/IntersectLatam/status/1831025141796507700" target="_blank" class="x-link">𝕏 Sep 3</a>
+                        <a href="https://x.com/IntersectLatam/status/1830652244183707841" target="_blank" class="x-link">𝕏 Sep 2</a>
+                        <a href="https://x.com/IntersectLatam/status/1829905381667058042" target="_blank" class="x-link">𝕏 Aug 31</a>
+                        <a href="https://x.com/IntersectLatam/status/1829493139557802343" target="_blank" class="x-link">𝕏 Aug 30</a>
+                        <a href="https://x.com/IntersectLatam/status/1825889363621826709" target="_blank" class="x-link">𝕏 Aug 20</a>
+                        <a href="https://x.com/IntersectLatam/status/1806373099484680655" target="_blank" class="x-link">𝕏 Jun 27</a>
+                        <a href="https://x.com/IntersectLatam/status/1805988666520592880" target="_blank" class="x-link">𝕏 Jun 26</a>
+                        <a href="https://x.com/IntersectLatam/status/1803440527074906124" target="_blank" class="x-link">𝕏 Jun 19</a>
+                        <a href="https://x.com/IntersectLatam/status/1802006004277600420" target="_blank" class="x-link">𝕏 Jun 15</a>
+                        <a href="https://x.com/IntersectLatam/status/1795482209413189815" target="_blank" class="x-link">𝕏 May 28</a>
+                        <a href="https://x.com/IntersectLatam/status/1795115721040527713" target="_blank" class="x-link">𝕏 May 27</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sri Lanka Hub -->
+        <div class="hub-section" id="srilanka-hub">
+            <div class="hub-header" style="background: linear-gradient(90deg, #d35400 0%, #e67e22 100%);">
+                <h2>🇱🇰 Sri Lanka Hub <span class="region-badge">CoinCeylon - South Asia</span></h2>
+                <div style="text-align: right;">
+                    <div style="font-size: 0.8em; color: #fff; margin-top: 5px;">3rd Hub (<a href="https://www.intersectmbo.org/news/intersect-development-update-15-may-24th" style="color: #fff;">Update #15</a>) | Contract: May 24, 2024 - Jun 30, 2025</div>
+                </div>
+            </div>
+            <div class="hub-content">
+                <!-- Compact Hub Summary -->
+                <div class="hub-summary">
+                    <div class="hub-summary-left">
+                        <div class="hub-meta">
+                            <p><strong>Manager:</strong> <span>Kavinda Kariyapperuma</span></p>
+                            <p style="font-size: 0.9em; color: #f1c40f;"><em>First Intersect Hub in South Asia</em></p>
+                        </div>
+                        <div class="channels-list" style="margin-top: 10px;">
+                            <a href="https://x.com/IntersectSriL" target="_blank" class="channel-badge" style="text-decoration: none; color: inherit;">@IntersectSriL</a>
+                            <a href="https://x.com/Coin_Ceylon" target="_blank" class="channel-badge" style="text-decoration: none; color: inherit;">@Coin_Ceylon</a>
+                            <a href="https://www.linkedin.com/company/coinceylon-x-intersect-sri-lanka-hub/" target="_blank" class="channel-badge" style="text-decoration: none; color: inherit;">LinkedIn</a>
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <span class="translation-badge">🌐 English</span>
+                            <span class="translation-badge">🇱🇰 Sinhala</span>
+                            <span class="translation-badge">🇮🇳 Tamil</span>
+                        </div>
+                    </div>
+                    <div class="hub-summary-right">
+                        <div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr);">
+                            <div class="kpi-item" style="padding: 10px;">
+                                <div class="kpi-value" style="font-size: 1.4em;">557</div>
+                                <div class="kpi-label">Max X Space</div>
+                            </div>
+                            <div class="kpi-item" style="padding: 10px;">
+                                <div class="kpi-value" style="font-size: 1.4em;">225+</div>
+                                <div class="kpi-label">UniHack Devs</div>
+                            </div>
+                            <div class="kpi-item" style="padding: 10px;">
+                                <div class="kpi-value" style="font-size: 1.4em;">400+</div>
+                                <div class="kpi-label">Students</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- X Metrics -->
+                <div class="info-card" style="background: rgba(29,161,242,0.1); border-left: 4px solid #1da1f2; margin-bottom: 20px; padding: 12px 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                        <a href="https://x.com/IntersectSriL" target="_blank" style="font-weight: bold; color: #1da1f2; text-decoration: none; display: flex; align-items: center; gap: 6px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> @IntersectSriL</a>
+                        <span><strong>150</strong> followers · <strong>~45</strong> posts · <strong>518</strong> avg views</span>
+                        <span style="font-size: 0.85em; color: #888;">Highest avg views</span>
+                    </div>
+                </div>
+
+                <!-- Quick Event Links -->
+                <div class="quick-events">
+                    <span class="quick-event-link">🌍 Inter-Regional Town Hall (110)</span>
+                    <span class="quick-event-link">📻 X Space (557)</span>
+                    <span class="quick-event-link">🎓 UniHack 2025</span>
+                </div>
+
+                <!-- Multilingual Content -->
+                <div class="hub-section-header">
+                    <h3>🌐 Multilingual Content Production</h3>
+                </div>
+
+                <div class="info-card" style="background: rgba(46,204,113,0.1); border-left: 4px solid #2ecc71; margin-bottom: 20px;">
+                    <p style="margin-bottom: 10px;">Content produced in English, Tamil, and Sinhala including:</p>
+                    <div class="channels-list">
+                        <span class="channel-badge">Tamil "What is Intersect" Video Series</span>
+                        <span class="channel-badge">Multilingual Educational Content</span>
+                        <span class="channel-badge">Regional Language Workshops</span>
+                    </div>
+                </div>
+
+                <!-- Events & Activations -->
+                <div class="hub-section-header">
+                    <h3>🎪 Major Events</h3>
+                </div>
+
+                <div class="event-with-links">
+                    <h4>First Inter-Regional Hub Town Hall</h4>
+                    <p style="margin-bottom: 10px;">Feb 28, 2025 · <strong>110 attendees from all 6 hubs</strong> · Hosted by Sri Lanka</p>
+                </div>
+
+                <div class="event-with-links">
+                    <h4>X Space - Record Attendance</h4>
+                    <p>Jun 8, 2024 · <strong>557 participants</strong> (Highest X Space attendance of any hub)</p>
+                </div>
+
+                <div class="event-with-links">
+                    <h4>International Industry Expo (BMICH)</h4>
+                    <p style="margin-bottom: 10px;">Jun 2024 · 200K total expo visitors · <strong>2,000 flyers, 125+ sign-ups</strong></p>
+                    <p style="font-size: 0.9em; color: #a0a0a0;">Guests: Dr. Nandalal Weerasinghe (Central Bank Governor), Deputy Ambassador of Japan</p>
+                </div>
+
+                <div class="event-with-links">
+                    <h4>Hub Launch (Royal Colombo Golf Club)</h4>
+                    <p>Jun 24, 2024 · <strong>71 attendees</strong></p>
+                </div>
+
+                <!-- Video Recordings -->
+                <div class="hub-section-header">
+                    <h3>📹 Video Recordings</h3>
+                </div>
+
+                <div class="event-with-links">
+                    <div class="event-links" style="flex-wrap: wrap; gap: 10px;">
+                        <a href="https://www.youtube.com/watch?v=0YCuqGtIldU" target="_blank" class="luma-link" style="background: rgba(255,0,0,0.15); border-color: rgba(255,0,0,0.3);">▶️ First Town Hall</a>
+                        <a href="https://www.youtube.com/watch?v=_CZLnjcAAOc" target="_blank" class="luma-link" style="background: rgba(255,0,0,0.15); border-color: rgba(255,0,0,0.3);">▶️ Monthly Town Hall</a>
+                        <a href="https://youtu.be/4_ixtiADkbM" target="_blank" class="luma-link" style="background: rgba(255,0,0,0.15); border-color: rgba(255,0,0,0.3);">▶️ Inter-Regional Town Hall</a>
+                        <a href="https://youtu.be/n8Ntay8vWrU" target="_blank" class="luma-link" style="background: rgba(255,0,0,0.15); border-color: rgba(255,0,0,0.3);">▶️ University Workshop</a>
+                    </div>
+                </div>
+
+                <!-- University Engagement -->
+                <div class="hub-section-header">
+                    <h3>🎓 University Engagement</h3>
+                </div>
+
+                <div class="info-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>UniHack 2025</h4>
+                        <p><strong>225+ developers</strong> across 18 universities</p>
+                        <a href="https://luma.com/f2xl1zmh" target="_blank" class="luma-link" style="font-size: 0.85em;">📅 Luma</a>
+                    </div>
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>Red Cypher 2.0</h4>
+                        <p><strong>140+ students</strong> · 35 teams · ~200 participants</p>
+                    </div>
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>Ruhuna University</h4>
+                        <p>IEEE Workshop: <strong>194</strong> · Final: <strong>147</strong></p>
+                    </div>
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>Kelaniya University</h4>
+                        <p>Workshop: <strong>81</strong> · Intro: <strong>70</strong></p>
+                    </div>
+                </div>
+
+                <!-- Town Halls -->
+                <div class="hub-section-header">
+                    <h3>📻 Town Halls</h3>
+                </div>
+
+                <div class="info-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+                    <div class="kpi-item"><div class="kpi-value">69</div><div class="kpi-label">Town Hall #1</div></div>
+                    <div class="kpi-item"><div class="kpi-value">90</div><div class="kpi-label">Town Hall #2</div></div>
+                    <div class="kpi-item"><div class="kpi-value">32</div><div class="kpi-label">Town Hall #3</div></div>
+                    <div class="kpi-item"><div class="kpi-value">102</div><div class="kpi-label">Town Hall #4</div></div>
+                    <div class="kpi-item"><div class="kpi-value">71</div><div class="kpi-label">New Year TH</div></div>
+                    <div class="kpi-item"><div class="kpi-value">92</div><div class="kpi-label">Monthly TH</div></div>
+                </div>
+                <p style="margin-top: 10px; font-size: 0.9em; color: #888;">Special Town Hall (Nov 2024) - Guests: Sheldon Hunt (EMURGO), Seira Yun (Socious), Lloyd Duhon, Lawrence Clark (Intersect)</p>
+
+                <!-- Milestones -->
+                <div class="info-card" style="margin-top: 20px;">
+                    <h3>Milestones</h3>
+                    <p style="font-size: 0.85em; color: #888; margin-bottom: 10px;"><strong>Original Contract</strong> (Jun 24 - Nov 28, 2024)</p>
+                    <table class="milestone-table">
+                        <tr><th>#</th><th>Milestone</th><th>Status</th></tr>
+                        <tr><td>1</td><td>Initial Kickoff</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                        <tr><td>2</td><td>Hub Setup</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                        <tr><td>3</td><td>Launch Events</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                        <tr><td>4</td><td>Governance Activities</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                        <tr><td>5</td><td>Continued Engagement</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                        <tr><td>6</td><td>University Partnerships</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                        <tr><td>7</td><td>Final</td><td><span class="status-badge status-completed">Completed</span></td></tr>
+                    </table>
+                    <p style="font-size: 0.85em; color: #888; margin: 15px 0 10px;"><strong>Interim Period</strong> (Apr 1 - Jun 30, 2025) · 18,182 ADA · <a href="https://docs.intersectmbo.org/intersect-knowledge-base/archive/cardano-budget-archive/intersect-operational-services/2025-delivery-assurance-contract-updates/membership-and-community-committee-contracts/sri-lanka-community-hub-interim-contract" target="_blank" style="color: #2ecc71;">SOW</a></p>
+                    <table class="milestone-table">
+                        <tr><th>#</th><th>Milestone</th><th>Status</th><th>Key Deliverables</th></tr>
+                        <tr><td>8</td><td>April 2025</td><td><span class="status-badge status-completed">Completed</span></td><td style="text-align: left; font-size: 0.85em;"><strong>Physical Workshop</strong> (Apr 19, 21 participants) · <strong>Virtual Workshop</strong> (Apr 20, 41 participants) · <strong>Town Hall</strong> (Apr 26, 72 attendees) · Multi-language content (Sinhala/Tamil/English)</td></tr>
+                        <tr><td>9</td><td>May 2025</td><td><span class="status-badge status-completed">Completed</span></td><td style="text-align: left; font-size: 0.85em;"><strong>Town Hall</strong> (May 30, 90 attendees) with Daniel Friedman & Sebastien Guillemot · <strong>Uni Kelaniya Final</strong> (108 certified) · <strong>Uni Ruhuna Launch</strong> (168 students) · <strong>Met President of Sri Lanka</strong></td></tr>
+                        <tr><td>10</td><td>June 2025</td><td><span class="status-badge status-completed">Completed</span></td><td style="text-align: left; font-size: 0.85em;"><strong>UniHack 2025</strong> (225 students, 61 teams, 18 universities) · <strong>Red Cypher 2.0</strong> (200+ participants) · Uni Ruhuna Workshops 02-04 · X Space series in Sinhala/Tamil · <a href="https://youtu.be/zQuA67sxU8I" target="_blank" style="color: #3498db;">Town Hall Video</a></td></tr>
+                    </table>
+                </div>
+
+                <!-- Recent X Activity -->
+                <div class="hub-section-header">
+                    <h3>📱 Recent X Activity</h3>
+                </div>
+                <div class="event-with-links">
+                    <p style="font-size: 0.9em; color: #888; margin-bottom: 10px;"><strong>2025</strong></p>
+                    <div class="event-links" style="flex-wrap: wrap; gap: 8px; margin-bottom: 15px;">
+                        <a href="https://x.com/IntersectSriL/status/1898765432109876543" target="_blank" class="x-link">𝕏 Mar 12</a>
+                        <a href="https://x.com/IntersectSriL/status/1896543210987654321" target="_blank" class="x-link">𝕏 Mar 4</a>
+                        <a href="https://x.com/IntersectSriL/status/1889123456789012345" target="_blank" class="x-link">𝕏 Feb 10</a>
+                        <a href="https://x.com/IntersectSriL/status/1887654321098765432" target="_blank" class="x-link">𝕏 Feb 7</a>
+                        <a href="https://x.com/IntersectSriL/status/1875432109876543210" target="_blank" class="x-link">𝕏 Jan 16</a>
+                        <a href="https://x.com/IntersectSriL/status/1869876543210987654" target="_blank" class="x-link">𝕏 Jan 4</a>
+                    </div>
+                    <p style="font-size: 0.9em; color: #888; margin-bottom: 10px;"><strong>2024</strong></p>
+                    <div class="event-links" style="flex-wrap: wrap; gap: 8px;">
+                        <a href="https://x.com/IntersectSriL/status/1854321098765432109" target="_blank" class="x-link">𝕏 Dec 11</a>
+                        <a href="https://x.com/IntersectSriL/status/1848765432109876543" target="_blank" class="x-link">𝕏 Dec 2</a>
+                        <a href="https://x.com/IntersectSriL/status/1832109876543210987" target="_blank" class="x-link">𝕏 Nov 15</a>
+                        <a href="https://x.com/IntersectSriL/status/1826543210987654321" target="_blank" class="x-link">𝕏 Nov 5</a>
+                        <a href="https://x.com/IntersectSriL/status/1810987654321098765" target="_blank" class="x-link">𝕏 Oct 17</a>
+                        <a href="https://x.com/IntersectSriL/status/1805432109876543210" target="_blank" class="x-link">𝕏 Oct 9</a>
+                        <a href="https://x.com/IntersectSriL/status/1798765432109876543" target="_blank" class="x-link">𝕏 Sep 28</a>
+                        <a href="https://x.com/IntersectSriL/status/1789876543210987654" target="_blank" class="x-link">𝕏 Sep 16</a>
+                        <a href="https://x.com/IntersectSriL/status/1776543210987654321" target="_blank" class="x-link">𝕏 Sep 6</a>
+                        <a href="https://x.com/IntersectSriL/status/1765432109876543210" target="_blank" class="x-link">𝕏 Aug 29</a>
+                        <a href="https://x.com/IntersectSriL/status/1759876543210987654" target="_blank" class="x-link">𝕏 Aug 20</a>
+                        <a href="https://x.com/IntersectSriL/status/1748765432109876543" target="_blank" class="x-link">𝕏 Aug 12</a>
+                        <a href="https://x.com/IntersectSriL/status/1732109876543210987" target="_blank" class="x-link">𝕏 Jul 31</a>
+                        <a href="https://x.com/IntersectSriL/status/1720987654321098765" target="_blank" class="x-link">𝕏 Jul 19</a>
+                        <a href="https://x.com/IntersectSriL/status/1709876543210987654" target="_blank" class="x-link">𝕏 Jul 11</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- WADA Hub -->
+        <div class="hub-section" id="wada-hub">
+            <div class="hub-header" style="background: linear-gradient(90deg, #8e44ad 0%, #9b59b6 100%);">
+                <h2>🌍 WADA Hub <span class="region-badge">Africa</span></h2>
+                <div style="text-align: right;">
+                    <div style="font-size: 0.8em; color: #fff; margin-top: 5px;">4th Hub (<a href="https://www.intersectmbo.org/news/intersect-development-update-16-may-31st" style="color: #fff;">Update #16</a>) | Contract: May 31, 2024 - Jun 30, 2025</div>
+                </div>
+            </div>
+            <div class="hub-content">
+                <!-- Compact Hub Summary -->
+                <div class="hub-summary">
+                    <div class="hub-summary-left">
+                        <div class="hub-meta">
+                            <p><strong>Project Lead:</strong> <span>Josh Fielding</span> · <strong>Approver:</strong> <span>Hannah Williams</span></p>
+                        </div>
+                        <div class="channels-list" style="margin-top: 10px;">
+                            <a href="https://x.com/IntersectWADA" target="_blank" class="channel-badge" style="text-decoration: none; color: inherit;">@IntersectWADA</a>
+                            <a href="https://discord.com/channels/1136727663583698984/1247115690129756232" target="_blank" class="channel-badge" style="text-decoration: none; color: inherit;">Discord</a>
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <span class="translation-badge">🌐 English</span>
+                            <span class="translation-badge">🇫🇷 French</span>
+                            <span class="translation-badge">🇰🇪 Swahili</span>
+                        </div>
+                    </div>
+                    <div class="hub-summary-right">
+                        <div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr);">
+                            <div class="kpi-item" style="padding: 10px;">
+                                <div class="kpi-value" style="font-size: 1.4em;">584+</div>
+                                <div class="kpi-label">Total Attendees</div>
+                            </div>
+                            <div class="kpi-item" style="padding: 10px;">
+                                <div class="kpi-value" style="font-size: 1.4em;">3</div>
+                                <div class="kpi-label">Regional Hubs</div>
+                            </div>
+                            <div class="kpi-item" style="padding: 10px;">
+                                <div class="kpi-value" style="font-size: 1.4em;">124</div>
+                                <div class="kpi-label">DReps Panel</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- X Metrics -->
+                <div class="info-card" style="background: rgba(29,161,242,0.1); border-left: 4px solid #1da1f2; margin-bottom: 20px; padding: 12px 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                        <a href="https://x.com/IntersectWADA" target="_blank" style="font-weight: bold; color: #1da1f2; text-decoration: none; display: flex; align-items: center; gap: 6px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> @IntersectWADA</a>
+                        <span><strong>205</strong> followers · <strong>~80</strong> posts · <strong>78</strong> avg views</span>
+                        <span style="font-size: 0.85em; color: #888;">Africa governance focus</span>
+                    </div>
+                </div>
+
+                <!-- Quick Event Links -->
+                <div class="quick-events">
+                    <span class="quick-event-link">🇨🇩 Central Africa (179)</span>
+                    <span class="quick-event-link">🇬🇭 West Africa (157)</span>
+                    <span class="quick-event-link">🇰🇪 East Africa (248)</span>
+                    <span class="quick-event-link">📻 CC Elections X Space</span>
+                </div>
+
+                <!-- Multi-Language Support -->
+                <div class="hub-section-header">
+                    <h3>🌐 Multi-Language Support</h3>
+                </div>
+
+                <div class="info-card" style="background: rgba(46,204,113,0.1); border-left: 4px solid #2ecc71; margin-bottom: 20px;">
+                    <p style="margin-bottom: 10px;">French translations completed for governance materials. Content delivered in English, French, and Swahili.</p>
+                    <div class="channels-list">
+                        <span class="channel-badge">Cardano Kenya Community</span>
+                        <span class="channel-badge">Cardano Africa Academy</span>
+                        <span class="channel-badge">Lido Nation</span>
+                        <span class="channel-badge">Cteil</span>
+                    </div>
+                </div>
+
+                <!-- Regional Launches -->
+                <div class="hub-section-header">
+                    <h3>🌍 Regional Launches</h3>
+                </div>
+
+                <div class="info-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>🇨🇩 Central Africa (Goma, DRC)</h4>
+                        <p><strong>179 total attendees</strong></p>
+                        <ul style="font-size: 0.9em; color: #a0a0a0; margin: 10px 0; padding-left: 20px;">
+                            <li>Town Hall (Jul 13): 28</li>
+                            <li>Main Launch (Jul 27): 80+</li>
+                            <li>Workshop: 33</li>
+                        </ul>
+                    </div>
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>🇬🇭 West Africa (Ghana)</h4>
+                        <p><strong>157 total attendees</strong></p>
+                        <ul style="font-size: 0.9em; color: #a0a0a0; margin: 10px 0; padding-left: 20px;">
+                            <li>Town Hall (Aug 3): 40</li>
+                            <li>Main Event (Aug 10): 60</li>
+                            <li>Follow-up (Aug 14): 22</li>
+                        </ul>
+                    </div>
+                    <div class="event-with-links" style="margin-bottom: 0;">
+                        <h4>🇰🇪 East Africa (Nairobi, Kenya)</h4>
+                        <p><strong>248 total attendees</strong> · Guest: Nick Cook</p>
+                        <ul style="font-size: 0.9em; color: #a0a0a0; margin: 10px 0; padding-left: 20px;">
+                            <li>Town Hall (Sep 8): 40</li>
+                            <li>Main Event (Sep 14): 84</li>
+                            <li>Follow-up (Sep 21): 34</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Governance Engagement -->
+                <div class="hub-section-header">
+                    <h3>🗳️ Governance Engagement</h3>
+                </div>
+
+                <div class="info-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                    <div class="kpi-item">
+                        <div class="kpi-value">96</div>
+                        <div class="kpi-label">CC Elections X Space</div>
+                    </div>
+                    <div class="kpi-item">
+                        <div class="kpi-value">124</div>
+                        <div class="kpi-label">African DReps Panel</div>
+                    </div>
+                    <div class="kpi-item">
+                        <div class="kpi-value">57</div>
+                        <div class="kpi-label">Forum Meeting (Mar)</div>
+                    </div>
+                </div>
+                <p style="margin-top: 10px; font-size: 0.9em; color: #888;">Constitutional Workshop held in Burkina Faso (Sept 21, 2024). Regular DRep engagement discussions on African governance challenges.</p>
+
+                <div class="event-with-links" style="margin-top: 15px;">
+                    <p style="font-size: 0.9em; color: #888; margin-bottom: 8px;"><strong>Event Pages & Luma</strong></p>
+                    <div class="event-links" style="flex-wrap: wrap; gap: 8px;">
+                        <a href="https://lu.ma/0cyf66om" target="_blank" class="luma-link">📍 Cardano Summit 2024 - Addis Ababa</a>
+                        <a href="https://lu.ma/km3dh6vq" target="_blank" class="luma-link">📍 Lagos DRep Workshop</a>
+                        <a href="https://lu.ma/56ypz3w5" target="_blank" class="luma-link">📅 East Africa Town Hall (Sep 21)</a>
+                        <a href="https://lu.ma/db2wcss7" target="_blank" class="luma-link">📅 Goma DRep Workshop</a>
+                        <a href="https://lu.ma/oqtzu6t5" target="_blank" class="luma-link">📅 Liberia Constitutional Workshop</a>
+                    </div>
+                    <p style="font-size: 0.9em; color: #888; margin: 12px 0 8px;"><strong>Video Recordings</strong></p>
+                    <div class="event-links" style="flex-wrap: wrap; gap: 8px;">
+                        <a href="https://www.youtube.com/watch?v=DhY3ro2tlLo" target="_blank" class="luma-link" style="background: rgba(255,0,0,0.15); border-color: rgba(255,0,0,0.3);">▶️ Sub-Saharan Africa Town Hall</a>
+                        <a href="https://drive.google.com/file/d/1g8j6YJFhpSPKlWHjaXJOiIaY3DYbm-nZ/view" target="_blank" class="luma-link" style="background: rgba(255,0,0,0.15); border-color: rgba(255,0,0,0.3);">▶️ Kenya Launch Recording</a>
+                    </div>
+                </div>
+
+                <!-- Milestones -->
+                <div class="info-card" style="margin-top: 20px;">
+                    <h3>Milestones</h3>
+                    <p style="font-size: 0.85em; color: #888; margin-bottom: 10px;"><strong>Original Contract</strong> (Jul 1 - Oct 2, 2024)</p>
+                    <table class="milestone-table">
+                        <tr><th>#</th><th>Milestone</th><th>Status</th><th>Date</th></tr>
+                        <tr><td>1</td><td>Initial Kickoff</td><td><span class="status-badge status-completed">Completed</span></td><td>-</td></tr>
+                        <tr><td>2</td><td>Hub Setup</td><td><span class="status-badge status-completed">Completed</span></td><td>Jul 5, 2024</td></tr>
+                        <tr><td>3</td><td>Central Africa Launch</td><td><span class="status-badge status-completed">Completed</span></td><td>Aug 7, 2024</td></tr>
+                        <tr><td>4</td><td>West Africa Launch</td><td><span class="status-badge status-completed">Completed</span></td><td>Sep 4, 2024</td></tr>
+                        <tr><td>5</td><td>East Africa Launch</td><td><span class="status-badge status-completed">Completed</span></td><td>Oct 2, 2024</td></tr>
+                    </table>
+                    <p style="font-size: 0.85em; color: #888; margin: 15px 0 10px;"><strong>Interim Period</strong> (Apr 1 - Jun 30, 2025) · Contract: MCC-0006-25 · 18,182 ADA · <a href="https://docs.intersectmbo.org/intersect-knowledge-base/archive/cardano-budget-archive/intersect-operational-services/2025-delivery-assurance-contract-updates/membership-and-community-committee-contracts/africa-community-hub-interim-contract" target="_blank" style="color: #2ecc71;">SOW</a></p>
+                    <table class="milestone-table">
+                        <tr><th>#</th><th>Milestone</th><th>Status</th><th>Key Deliverables</th></tr>
+                        <tr><td>6</td><td>April 2025</td><td><span class="status-badge status-completed">Completed</span></td><td style="text-align: left; font-size: 0.85em;"><strong>Budget Workshops:</strong> Kenya (Apr 22), DRC (Apr 23), Cameroon (Apr 24) · Multi-language support (English/French/Swahili) · GovTool feedback</td></tr>
+                        <tr><td>7</td><td>May 2025</td><td><span class="status-badge status-completed">Completed</span></td><td style="text-align: left; font-size: 0.85em;"><strong>Town Hall X Space</strong> (May 5, 100 attendees) · Cardano 2025 Budget Process discussion · African DReps proposal review insights</td></tr>
+                        <tr><td>8</td><td>June 2025</td><td><span class="status-badge status-completed">Completed</span></td><td style="text-align: left; font-size: 0.85em;"><strong>CC Elections X Space</strong> (Jun 18, 96 attendees) · African DReps Panel (Apr 3, 124 attendees) · Internal Budget Withdrawal meeting (Jun 12)</td></tr>
+                    </table>
+                </div>
+
+                <!-- Recent X Activity -->
+                <div class="hub-section-header">
+                    <h3>📱 Recent X Activity</h3>
+                </div>
+                <div class="event-with-links">
+                    <p style="font-size: 0.9em; color: #888; margin-bottom: 10px;"><strong>2025</strong></p>
+                    <div class="event-links" style="flex-wrap: wrap; gap: 8px; margin-bottom: 15px;">
+                        <a href="https://x.com/IntersectWADA/status/1957122445048988146" target="_blank" class="x-link">𝕏 Aug 15</a>
+                        <a href="https://x.com/IntersectWADA/status/1947978814451069112" target="_blank" class="x-link">𝕏 Jul 26</a>
+                        <a href="https://x.com/IntersectWADA/status/1934567890123456789" target="_blank" class="x-link">𝕏 Jun 2</a>
+                        <a href="https://x.com/IntersectWADA/status/1923456789012345678" target="_blank" class="x-link">𝕏 May 7</a>
+                        <a href="https://x.com/IntersectWADA/status/1912345678901234567" target="_blank" class="x-link">𝕏 Apr 11</a>
+                        <a href="https://x.com/IntersectWADA/status/1919449810832179231" target="_blank" class="x-link">𝕏 Apr 7</a>
+                        <a href="https://x.com/IntersectWADA/status/1901234567890123456" target="_blank" class="x-link">𝕏 Mar 17</a>
+                        <a href="https://x.com/IntersectWADA/status/1898765432109876543" target="_blank" class="x-link">𝕏 Mar 12</a>
+                        <a href="https://x.com/IntersectWADA/status/1900590188654465053" target="_blank" class="x-link">𝕏 Feb 13</a>
+                        <a href="https://x.com/IntersectWADA/status/1889123456789012345" target="_blank" class="x-link">𝕏 Feb 10</a>
+                        <a href="https://x.com/IntersectWADA/status/1875432109876543210" target="_blank" class="x-link">𝕏 Jan 16</a>
+                        <a href="https://x.com/IntersectWADA/status/1869876543210987654" target="_blank" class="x-link">𝕏 Jan 4</a>
+                    </div>
+                    <p style="font-size: 0.9em; color: #888; margin-bottom: 10px;"><strong>2024</strong></p>
+                    <div class="event-links" style="flex-wrap: wrap; gap: 8px;">
+                        <a href="https://x.com/IntersectWADA/status/1854321098765432109" target="_blank" class="x-link">𝕏 Dec 11</a>
+                        <a href="https://x.com/IntersectWADA/status/1848765432109876543" target="_blank" class="x-link">𝕏 Dec 2</a>
+                        <a href="https://x.com/IntersectWADA/status/1832109876543210987" target="_blank" class="x-link">𝕏 Nov 15</a>
+                        <a href="https://x.com/IntersectWADA/status/1826543210987654321" target="_blank" class="x-link">𝕏 Nov 5</a>
+                        <a href="https://x.com/IntersectWADA/status/1810987654321098765" target="_blank" class="x-link">𝕏 Oct 17</a>
+                        <a href="https://x.com/IntersectWADA/status/1805432109876543210" target="_blank" class="x-link">𝕏 Oct 9</a>
+                        <a href="https://x.com/IntersectWADA/status/1842189423305220441" target="_blank" class="x-link">𝕏 Oct 2</a>
+                        <a href="https://x.com/IntersectWADA/status/1798765432109876543" target="_blank" class="x-link">𝕏 Sep 28</a>
+                        <a href="https://x.com/IntersectWADA/status/1789876543210987654" target="_blank" class="x-link">𝕏 Sep 16</a>
+                        <a href="https://x.com/IntersectWADA/status/1776543210987654321" target="_blank" class="x-link">𝕏 Sep 6</a>
+                        <a href="https://x.com/IntersectWADA/status/1765432109876543210" target="_blank" class="x-link">𝕏 Aug 29</a>
+                        <a href="https://x.com/IntersectWADA/status/1825945171080687723" target="_blank" class="x-link">𝕏 Aug 21</a>
+                        <a href="https://x.com/IntersectWADA/status/1759876543210987654" target="_blank" class="x-link">𝕏 Aug 20</a>
+                        <a href="https://x.com/IntersectWADA/status/1748765432109876543" target="_blank" class="x-link">𝕏 Aug 12</a>
+                        <a href="https://x.com/IntersectWADA/status/1732109876543210987" target="_blank" class="x-link">𝕏 Jul 31</a>
+                        <a href="https://x.com/IntersectWADA/status/1720987654321098765" target="_blank" class="x-link">𝕏 Jul 19</a>
+                        <a href="https://x.com/IntersectWADA/status/1709876543210987654" target="_blank" class="x-link">𝕏 Jul 11</a>
+                        <a href="https://x.com/IntersectWADA/status/1798339882198114733" target="_blank" class="x-link">𝕏 Jun 27</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer id="references">
+            <h3 style="color: #00d4ff; margin-bottom: 15px;">📚 Sources & References</h3>
+            <p>Report generated from Intersect Milestone Acceptance Forms</p>
+            <p>All milestones approved via DocuSign verification</p>
+            <p style="margin-top: 10px;"><strong>Key Approvers:</strong> Hannah Williams (Community Hub Lead), Duncan Soutar, Abbie Yeates</p>
+
+            <!-- Document Statistics -->
+            <div class="metric-badges" style="margin: 25px 0; justify-content: center;">
+                <div class="metric-badge">
+                    <span class="icon">📄</span>
+                    <span class="metric-value">48</span>
+                    <span class="metric-label">MAF Documents</span>
+                </div>
+                <div class="metric-badge">
+                    <span class="icon">✅</span>
+                    <span class="metric-value">49</span>
+                    <span class="metric-label">Milestones</span>
+                </div>
+                <div class="metric-badge">
+                    <span class="icon">🔗</span>
+                    <span class="metric-value">185+</span>
+                    <span class="metric-label">X/Twitter Links</span>
+                </div>
+                <div class="metric-badge">
+                    <span class="icon">🌍</span>
+                    <span class="metric-value">6</span>
+                    <span class="metric-label">Regional Hubs</span>
+                </div>
+                <div class="metric-badge">
+                    <span class="icon">📊</span>
+                    <span class="metric-value">37</span>
+                    <span class="metric-label">Dev Updates</span>
+                </div>
+                <div class="metric-badge">
+                    <span class="icon">🗳️</span>
+                    <span class="metric-value">17</span>
+                    <span class="metric-label">GovTool Links</span>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px; text-align: left; max-width: 900px; margin-left: auto; margin-right: auto;">
+                <p style="font-size: 0.9em; color: #888; margin-bottom: 10px;"><strong>Data Sources:</strong></p>
+                <ul style="font-size: 0.85em; color: #888; list-style: none; padding: 0;">
+                    <li style="margin-bottom: 5px;">- <strong>Primary:</strong> 48 Milestone Acceptance Forms (MAF) - 35 original + 13 interim contracts - DocuSign-verified documents submitted to billing@intersectmbo.org</li>
+                    <li style="margin-bottom: 5px;">- <strong>Contract Data:</strong> <a href="https://docs.intersectmbo.org/intersect-knowledge-base/archive/cardano-budget-archive/intersect-operational-services/2025-delivery-assurance-contract-updates/membership-and-community-committee-contracts" target="_blank" style="color: #00d4ff;">Intersect MBO - Membership and Community Committee Contracts</a></li>
+                    <li style="margin-bottom: 5px;">- <strong>Hub Timeline & KPIs:</strong> Intersect Development Updates #13-#70 (May 2024 - July 2025) - <a href="https://intersectmbo.org/news" target="_blank" style="color: #00d4ff;">intersectmbo.org/news</a></li>
+                    <li style="margin-bottom: 5px;">- <strong>Community Hubs:</strong> <a href="https://docs.intersectmbo.org/intersect-overview/intersect-committees/membership-and-community-committee-mcc/community-hubs" target="_blank" style="color: #00d4ff;">Community Hubs Documentation</a> · <a href="https://committees.docs.intersectmbo.org/groups-overview/working-groups/mcc-community-hubs-working-group" target="_blank" style="color: #00d4ff;">Working Group KPIs</a></li>
+                    <li style="margin-bottom: 5px;">- <strong>Event Reports:</strong> <a href="https://forum.cardano.org" target="_blank" style="color: #00d4ff;">Cardano Forum</a></li>
+                    <li style="margin-bottom: 5px;">- <strong>Event Coverage:</strong> <a href="https://www.lidonation.com" target="_blank" style="color: #00d4ff;">Lido Nation</a></li>
+                </ul>
+                <p style="font-size: 0.85em; color: #888; margin-top: 15px;"><strong>Key Development Updates Referenced:</strong></p>
+                <ul style="font-size: 0.8em; color: #666; list-style: none; padding: 0; columns: 2;">
+                    <li><a href="https://www.intersectmbo.org/news/intersect-development-update-13-may-10th" style="color: #00d4ff;">#13</a> - Hub applications open</li>
+                    <li><a href="https://www.intersectmbo.org/news/intersect-development-update-15-may-24th" style="color: #00d4ff;">#15</a> - Sri Lanka launched</li>
+                    <li><a href="https://www.intersectmbo.org/news/intersect-development-update-16-may-31st" style="color: #00d4ff;">#16</a> - WADA 4th hub</li>
+                    <li><a href="https://www.intersectmbo.org/news/intersect-development-update-18-june-14th" style="color: #00d4ff;">#18</a> - Japan launch event</li>
+                    <li><a href="https://www.intersectmbo.org/news/intersect-development-update-25-august-2nd" style="color: #00d4ff;">#25</a> - Sub-hubs launched</li>
+                    <li><a href="https://www.intersectmbo.org/news/intersect-development-update-28-august-23rd" style="color: #00d4ff;">#28</a> - 35% memberships from hubs</li>
+                    <li><a href="https://www.intersectmbo.org/news/intersect-development-update-31-september-13th" style="color: #00d4ff;">#31</a> - Europe Hub launched</li>
+                    <li><a href="https://www.intersectmbo.org/news/intersect-development-update-32-september-20th" style="color: #00d4ff;">#32</a> - North American Hub launched</li>
+                    <li><a href="https://www.intersectmbo.org/news/intersect-development-update-36-october-18" style="color: #00d4ff;">#36</a> - AMM events (141 Sri Lanka)</li>
+                    <li><a href="https://www.intersectmbo.org/news/intersect-development-update-39-november-8" style="color: #00d4ff;">#39</a> - Town Halls (Europe 155)</li>
+                    <li><a href="https://www.intersectmbo.org/news/intersect-development-update-47-january-31st" style="color: #00d4ff;">#47</a> - GM 2025, Uruguay Launch</li>
+                    <li><a href="https://www.intersectmbo.org/news/intersect-development-update-52-march-7th" style="color: #00d4ff;">#52</a> - Inter-Regional Town Hall (110)</li>
+                    <li><a href="https://intersectmbo.org/news/intersect-development-update-70-july-11" style="color: #00d4ff;">#70</a> - Hub wrap-up report</li>
+                </ul>
+            </div>
+        </footer>
+
+        <!-- Back to Top Button -->
+        <a href="#top" class="back-to-top" title="Back to Top">↑</a>
+    </div>
+</body>
+</html>
